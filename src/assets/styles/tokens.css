@@ -1,1 +1,76 @@
-/* TODO: paleta e utilitários de fonte do Elysium (task 2) */
+:root {
+  --bg: #0d0b08;
+  --bg-soft: #17130d;
+  --panel: rgba(30, 25, 18, 0.9);
+  --panel-solid: #1c1811;
+  --track: #1c1811;
+
+  --ink: #ece3d0;
+  --ink-muted: #9a9384;
+  --ink-dim: #b7b0a0;
+  --ink-faint: #6d6656;
+
+  --gold: #c9a227;
+  --danger: #ad5a3c;
+  --player: #6f8f7a;
+  --purple: #8f7aa8;
+  --steel: #7a8fa3;
+
+  --road-fill: #332c22;
+  --road-dash: #4a4132;
+
+  --border-gold: rgba(201, 162, 39, 0.32);
+  --border-danger: rgba(173, 90, 60, 0.4);
+  --border-faint: rgba(255, 255, 255, 0.14);
+  --border-hair: rgba(255, 255, 255, 0.06);
+
+  --enemy-1: #ad5a3c;
+  --enemy-2: #c9a227;
+  --enemy-3: #6f8f7a;
+  --enemy-4: #8f7aa8;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+.k-title {
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+}
+
+.k-label {
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--gold);
+}
+
+.k-panel {
+  background: var(--panel);
+  border: 1px solid var(--border-gold);
+  border-radius: 8px;
+}
+
+.k-btn-primary {
+  background: var(--gold);
+  color: var(--bg);
+  font-weight: 700;
+  letter-spacing: 1px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: none;
+}
+
+.k-btn-ghost {
+  background: transparent;
+  color: var(--ink-muted);
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  border-radius: 8px;
+  border: 1px solid var(--border-faint);
+  cursor: pointer;
+}
