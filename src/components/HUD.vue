@@ -232,4 +232,3 @@ const fireModes: { value: FireMode; label: string }[] = [
   color: var(--ink);
 }
 </style>
-</content>
