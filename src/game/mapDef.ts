@@ -6,15 +6,6 @@ export interface Point {
 export const WORLD_W = 1920
 export const WORLD_H = 1080
 
-export const ROAD_CURVES: [Point, Point, Point][] = [
-  [{ x: 250, y: 540 }, { x: 300, y: 860 }, { x: 620, y: 820 }],
-  [{ x: 940, y: 780 }, { x: 700, y: 300 }, { x: 1020, y: 260 }],
-  [{ x: 1340, y: 220 }, { x: 1120, y: 880 }, { x: 1460, y: 860 }],
-  [{ x: 1680, y: 846 }, { x: 1750, y: 600 }, { x: 2140, y: 460 }],
-]
-
-export const ROAD_START: Point = { x: -220, y: 540 }
-
 export const WAYPOINTS: Point[] = [
   { x: 0, y: 540 },
   { x: 310, y: 760 },
@@ -31,6 +22,41 @@ export const SPAWN_POINT: Point = { x: 0, y: 540 }
 export const LEAK_POINT: Point = { x: 1920, y: 460 }
 
 export const ROAD_WIDTH = 46
+
+const ROAD_MARGIN = 220
+
+/**
+ * Converte uma sequência de pontos numa lista de segmentos bezier cúbicos
+ * (Catmull-Rom → Bézier) que passa exatamente por todo ponto de entrada.
+ */
+function catmullRomToBezier(points: Point[]): [Point, Point, Point][] {
+  const segments: [Point, Point, Point][] = []
+
+  for (let i = 0; i < points.length - 1; i += 1) {
+    const p0 = points[i - 1] ?? points[i]
+    const p1 = points[i]
+    const p2 = points[i + 1]
+    const p3 = points[i + 2] ?? points[i + 1]
+    if (!p0 || !p1 || !p2 || !p3) continue
+
+    segments.push([
+      { x: p1.x + (p2.x - p0.x) / 6, y: p1.y + (p2.y - p0.y) / 6 },
+      { x: p2.x - (p3.x - p1.x) / 6, y: p2.y - (p3.y - p1.y) / 6 },
+      { x: p2.x, y: p2.y },
+    ])
+  }
+
+  return segments
+}
+
+const ROAD_PATH_POINTS: Point[] = [
+  { x: (WAYPOINTS[0]?.x ?? 0) - ROAD_MARGIN, y: WAYPOINTS[0]?.y ?? 0 },
+  ...WAYPOINTS,
+  { x: (WAYPOINTS[WAYPOINTS.length - 1]?.x ?? 0) + ROAD_MARGIN, y: WAYPOINTS[WAYPOINTS.length - 1]?.y ?? 0 },
+]
+
+export const ROAD_START: Point = ROAD_PATH_POINTS[0] as Point
+export const ROAD_CURVES: [Point, Point, Point][] = catmullRomToBezier(ROAD_PATH_POINTS)
 
 export const NEUTRAL_ZONE = { x: 900, y: 430, radius: 180 }
 export const PLAYER_START: Point = { x: 900, y: 430 }
