@@ -34,12 +34,6 @@ export type ForkAxis = 'range' | 'damage' | 'role'
 
 const FIRE_MODE_CYCLE: FireMode[] = ['auto', 'manual-mov', 'manual-mouse']
 
-const FORK_RUN_STATE: Record<ForkAxis, RunState> = {
-  range: 'fork-range',
-  damage: 'fork-damage',
-  role: 'fork-role',
-}
-
 const nextXpToNext = (level: number, xpBase: number): number => Math.round(xpBase * Math.pow(1.5, level - 1))
 
 export interface LiveStats {
@@ -147,7 +141,7 @@ export const useGameStore = defineStore('game', () => {
       return
     }
     if (levelDef.kind === 'fork-range' || levelDef.kind === 'fork-damage' || levelDef.kind === 'fork-role') {
-      runState.value = FORK_RUN_STATE[levelDef.kind.replace('fork-', '') as ForkAxis]
+      runState.value = levelDef.kind
       return
     }
     if (levelDef.kind === 'capstone') {
@@ -166,6 +160,12 @@ export const useGameStore = defineStore('game', () => {
     const ratio = maxHp.value > 0 ? hp.value / maxHp.value : 1
     maxHp.value = newMaxHp
     hp.value = Math.min(newMaxHp, newMaxHp * ratio)
+  }
+
+  const setMaxStamina = (newMaxStamina: number): void => {
+    const ratio = maxStamina.value > 0 ? stamina.value / maxStamina.value : 1
+    maxStamina.value = newMaxStamina
+    stamina.value = Math.min(newMaxStamina, newMaxStamina * ratio)
   }
 
   const addXp = (amount: number): void => {
@@ -228,12 +228,15 @@ export const useGameStore = defineStore('game', () => {
     runState.value = 'playing'
   }
 
-  const updateStamina = (deltaMs: number, wantsSprint: boolean): boolean => {
+  const updateStamina = (deltaMs: number, wantsSprint: boolean, regenMultiplier = 1): boolean => {
     const active = wantsSprint && stamina.value > 0
     if (active) {
       stamina.value = Math.max(0, stamina.value - (tunables.staminaDrainPerSec * deltaMs) / 1000)
     } else {
-      stamina.value = Math.min(maxStamina.value, stamina.value + (tunables.staminaRegenPerSec * deltaMs) / 1000)
+      stamina.value = Math.min(
+        maxStamina.value,
+        stamina.value + (tunables.staminaRegenPerSec * regenMultiplier * deltaMs) / 1000,
+      )
     }
     return active
   }
@@ -244,10 +247,6 @@ export const useGameStore = defineStore('game', () => {
 
   const setLiveStats = (stats: LiveStats): void => {
     liveStats.value = stats
-  }
-
-  const acknowledgeSkill = (): void => {
-    runState.value = 'playing'
   }
 
   const registerKill = (): void => {
@@ -302,6 +301,7 @@ export const useGameStore = defineStore('game', () => {
     takeDamage,
     heal,
     setMaxHp,
+    setMaxStamina,
     addLeak,
     addXp,
     chooseGod,
@@ -313,7 +313,6 @@ export const useGameStore = defineStore('game', () => {
     updateStamina,
     setGameSpeed,
     setLiveStats,
-    acknowledgeSkill,
     registerKill,
     tickSurvivalTime,
     cycleFireMode,
