@@ -3,7 +3,7 @@ import { ref } from 'vue'
 
 export type FireMode = 'auto' | 'manual-mov' | 'manual-mouse'
 export type Archetype = 'nomade-entre-zonas' | 'errante-na-zona' | 'imovel'
-export type RunState = 'menu' | 'playing' | 'levelup' | 'classselect' | 'gameover'
+export type RunState = 'menu' | 'playing' | 'levelup' | 'classselect' | 'zoneselect' | 'gameover'
 export type GameOverReason = 'hp' | 'leaks' | null
 export type Zone = 'neutra' | 'norte' | 'sul'
 
@@ -77,9 +77,13 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
-  const chooseGod = (godId: string, chosenArchetype: Archetype, chosenZone: Zone): void => {
+  const chooseGod = (godId: string, chosenArchetype: Archetype): void => {
     chosenGodId.value = godId
     archetype.value = chosenArchetype
+    runState.value = 'zoneselect'
+  }
+
+  const chooseZone = (chosenZone: Zone): void => {
     zone.value = chosenZone
     runState.value = 'playing'
   }
@@ -140,6 +144,7 @@ export const useGameStore = defineStore('game', () => {
     addLeak,
     addXp,
     chooseGod,
+    chooseZone,
     updateStamina,
     acknowledgeSkill,
     registerKill,
