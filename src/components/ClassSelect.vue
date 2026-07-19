@@ -6,25 +6,6 @@
         <div class="class-select-level">NÍVEL 2 · UM CAMINHO SE ABRE</div>
         <div class="class-select-title">Escolha seu Deus</div>
       </div>
-      <div class="class-select-zone">
-        <span class="class-select-zone-label">ZONA INICIAL</span>
-        <div class="class-select-zone-toggle">
-          <div
-            class="class-select-zone-btn"
-            :class="{ 'class-select-zone-btn--active': selectedZone === 'norte' }"
-            @click="selectedZone = 'norte'"
-          >
-            NORTE
-          </div>
-          <div
-            class="class-select-zone-btn"
-            :class="{ 'class-select-zone-btn--active': selectedZone === 'sul' }"
-            @click="selectedZone = 'sul'"
-          >
-            SUL
-          </div>
-        </div>
-      </div>
       <div class="class-select-list">
         <div
           v-for="(god, index) in gods"
@@ -61,9 +42,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
 import { useGameStore } from '@/stores/useGameStore'
-import type { Zone } from '@/stores/useGameStore'
 import { GODS, type GodDef } from '@/game/gods'
 
 const emit = defineEmits(['close'])
@@ -71,10 +50,9 @@ const emit = defineEmits(['close'])
 const gameStore = useGameStore()
 
 const gods = GODS
-const selectedZone = ref<Extract<Zone, 'norte' | 'sul'>>('norte')
 
 const choose = (god: GodDef): void => {
-  gameStore.chooseGod(god.id, god.archetype, selectedZone.value)
+  gameStore.chooseGod(god.id, god.archetype)
   emit('close')
 }
 </script>
@@ -128,45 +106,6 @@ const choose = (god: GodDef): void => {
   font-family: 'Cinzel', serif;
   font-size: clamp(28px, 4vw, 44px);
   font-weight: 700;
-}
-
-.class-select-zone {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-}
-
-.class-select-zone-label {
-  font-family: 'Cinzel', serif;
-  font-size: 12px;
-  letter-spacing: 3px;
-  color: var(--ink-muted);
-}
-
-.class-select-zone-toggle {
-  display: flex;
-  gap: 8px;
-  padding: 4px;
-  background: var(--panel-solid);
-  border: 1px solid var(--border-faint);
-  border-radius: 8px;
-}
-
-.class-select-zone-btn {
-  padding: 8px 26px;
-  border-radius: 6px;
-  font-family: 'Cinzel', serif;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  color: var(--ink-muted);
-  cursor: pointer;
-}
-
-.class-select-zone-btn--active {
-  background: var(--gold);
-  color: var(--bg);
 }
 
 .class-select-list {
