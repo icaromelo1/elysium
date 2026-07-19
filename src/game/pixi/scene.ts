@@ -31,7 +31,7 @@ const ROAD_CORNER_RADIUS = 40
 const PATH_STAMP_SPACING = 28
 const SHADOW_UPDATE_INTERVAL_MS = 500
 
-const MAP_ID = 'grecia-romana'
+export const MAP_ID = 'grecia-romana'
 
 /**
  * A Fase 3 (horário estático por mapa) e a Fase 4 (ciclo dinâmico) coexistem:

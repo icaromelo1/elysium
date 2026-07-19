@@ -52,7 +52,8 @@ import { Graphics, type Ticker } from 'pixi.js'
 import { useGameStore } from '@/stores/useGameStore'
 import type { ForkAxis } from '@/stores/useGameStore'
 import { useTunablesStore } from '@/stores/useTunablesStore'
-import { MapScene } from '@/game/pixi/scene'
+import { MapScene, MAP_ID } from '@/game/pixi/scene'
+import { MAP_TIME_OF_DAY } from '@/game/lighting'
 import { PlayerAvatar, PLAYER_RADIUS, type MovementConstraint } from '@/game/pixi/player'
 import { EnemyPool, type Enemy } from '@/game/pixi/enemy'
 import { CombatTicker, resolveAttackTarget, type CombatContext } from '@/game/pixi/combat'
@@ -509,6 +510,7 @@ function onTick(deltaMs: number): void {
   applyEnemyContactDamage(scaledDeltaMs)
   waveSpawner.update(scaledDeltaMs, spawnEnemy, tunables.waveSpawnIntervalMs)
   gameStore.tickSurvivalTime(scaledDeltaMs)
+  scene?.updateLighting(gameStore.survivalTimeMs)
   combatFx.update(scaledDeltaMs)
 }
 
@@ -558,6 +560,7 @@ onMounted(async () => {
 
   scene = new MapScene()
   await scene.init(hostEl.value)
+  scene.setTimeOfDay(MAP_TIME_OF_DAY[MAP_ID] ?? 'dia')
   player = new PlayerAvatar(PLAYER_START.x, PLAYER_START.y)
   scene.addEntity(player.root)
   enemyPool = new EnemyPool()
