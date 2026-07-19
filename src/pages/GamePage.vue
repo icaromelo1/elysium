@@ -5,6 +5,7 @@
     <HUD v-if="gameStore.runState === 'playing'" />
     <SkillCard v-if="gameStore.runState === 'levelup'" @close="onSkillClosed" />
     <ClassSelect v-if="gameStore.runState === 'classselect'" @close="onClassClosed" />
+    <ZoneSelect v-if="gameStore.runState === 'zoneselect'" @close="onZoneClosed" />
     <GameOverPanel v-if="gameStore.runState === 'gameover'" />
   </div>
 </template>
@@ -19,10 +20,11 @@ import { EnemyPool, type Enemy } from '@/game/pixi/enemy'
 import { CombatTicker, type CombatContext } from '@/game/pixi/combat'
 import { CombatFxLayer } from '@/game/pixi/combatFx'
 import { WaveSpawner } from '@/game/pixi/waveSpawner'
-import { PLAYER_START, NEUTRAL_ZONE } from '@/game/mapDef'
+import { PLAYER_START, NEUTRAL_ZONE, WORLD_H, WORLD_W } from '@/game/mapDef'
 import HUD from '@/components/HUD.vue'
 import SkillCard from '@/components/SkillCard.vue'
 import ClassSelect from '@/components/ClassSelect.vue'
+import ZoneSelect from '@/components/ZoneSelect.vue'
 import GameOverPanel from '@/components/GameOverPanel.vue'
 
 const MOVE_SPEED = 220
@@ -196,6 +198,7 @@ function onTick(deltaMs: number): void {
     mouseWorldPos,
   }
   combatTicker.update(deltaMs, ctx, handleHit)
+  player.setRange(ctx.range)
 
   applyEnemyContactDamage(deltaMs)
   waveSpawner.update(deltaMs, spawnEnemy)
@@ -209,11 +212,16 @@ function onSkillClosed(): void {
 
 function onClassClosed(): void {}
 
+function onZoneClosed(): void {}
+
 watch(
   () => gameStore.runState,
   (next, prev) => {
     if (prev === 'gameover' && next === 'playing') {
       resetGameplayState()
+    }
+    if (next === 'zoneselect') {
+      scene?.follow(WORLD_W / 2, WORLD_H / 2)
     }
   },
 )
