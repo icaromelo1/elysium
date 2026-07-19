@@ -1,7 +1,12 @@
 import { Container, Graphics } from 'pixi.js'
-import { COLOR, PLAYER_ZONE } from '../mapDef'
+import { COLOR, NEUTRAL_ZONE, WORLD_H, WORLD_W, roadYAtX, sideOfRoad, type ZoneSide } from '../mapDef'
 
 const PLAYER_RADIUS = 32
+const ZONE_CLAMP_MARGIN = 24
+
+export type MovementConstraint =
+  | { kind: 'neutral' }
+  | { kind: 'zone'; side: ZoneSide; canCross: boolean }
 
 export class PlayerAvatar {
   root: Container
@@ -20,18 +25,26 @@ export class PlayerAvatar {
     this.root.position.set(this.x, this.y)
   }
 
-  move(dx: number, dy: number): void {
+  move(dx: number, dy: number, constraint: MovementConstraint): void {
     let nextX = this.x + dx
     let nextY = this.y + dy
 
-    const offsetX = nextX - PLAYER_ZONE.x
-    const offsetY = nextY - PLAYER_ZONE.y
-    const distance = Math.sqrt(offsetX * offsetX + offsetY * offsetY)
-    if (distance > PLAYER_ZONE.radius) {
-      const scale = PLAYER_ZONE.radius / distance
-      nextX = PLAYER_ZONE.x + offsetX * scale
-      nextY = PLAYER_ZONE.y + offsetY * scale
+    if (constraint.kind === 'neutral') {
+      const offsetX = nextX - NEUTRAL_ZONE.x
+      const offsetY = nextY - NEUTRAL_ZONE.y
+      const distance = Math.sqrt(offsetX * offsetX + offsetY * offsetY)
+      if (distance > NEUTRAL_ZONE.radius) {
+        const scale = NEUTRAL_ZONE.radius / distance
+        nextX = NEUTRAL_ZONE.x + offsetX * scale
+        nextY = NEUTRAL_ZONE.y + offsetY * scale
+      }
+    } else if (!constraint.canCross && sideOfRoad(nextX, nextY) !== constraint.side) {
+      const roadY = roadYAtX(nextX)
+      nextY = constraint.side === 'norte' ? Math.min(nextY, roadY - ZONE_CLAMP_MARGIN) : Math.max(nextY, roadY + ZONE_CLAMP_MARGIN)
     }
+
+    nextX = Math.min(Math.max(nextX, PLAYER_RADIUS), WORLD_W - PLAYER_RADIUS)
+    nextY = Math.min(Math.max(nextY, PLAYER_RADIUS), WORLD_H - PLAYER_RADIUS)
 
     this.x = nextX
     this.y = nextY

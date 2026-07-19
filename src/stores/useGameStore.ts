@@ -5,8 +5,11 @@ export type FireMode = 'auto' | 'manual-mov' | 'manual-mouse'
 export type Archetype = 'nomade-entre-zonas' | 'errante-na-zona' | 'imovel'
 export type RunState = 'menu' | 'playing' | 'levelup' | 'classselect' | 'gameover'
 export type GameOverReason = 'hp' | 'leaks' | null
+export type Zone = 'neutra' | 'norte' | 'sul'
 
 const FIRE_MODE_CYCLE: FireMode[] = ['auto', 'manual-mov', 'manual-mouse']
+const STAMINA_DRAIN_PER_SEC = 35
+const STAMINA_REGEN_PER_SEC = 20
 
 const nextXpToNext = (level: number): number => Math.round(10 * Math.pow(1.5, level - 1))
 
@@ -21,6 +24,9 @@ export const useGameStore = defineStore('game', () => {
   const fireMode = ref<FireMode>('auto')
   const chosenGodId = ref<string | null>(null)
   const archetype = ref<Archetype | null>(null)
+  const zone = ref<Zone>('neutra')
+  const stamina = ref<number>(100)
+  const maxStamina = ref<number>(100)
   const enemiesKilled = ref<number>(0)
   const survivalTimeMs = ref<number>(0)
   const runState = ref<RunState>('menu')
@@ -36,6 +42,8 @@ export const useGameStore = defineStore('game', () => {
     survivalTimeMs.value = 0
     chosenGodId.value = null
     archetype.value = null
+    zone.value = 'neutra'
+    stamina.value = maxStamina.value
     gameOverReason.value = null
     fireMode.value = 'auto'
     runState.value = 'playing'
@@ -69,10 +77,21 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
-  const chooseGod = (godId: string, chosenArchetype: Archetype): void => {
+  const chooseGod = (godId: string, chosenArchetype: Archetype, chosenZone: Zone): void => {
     chosenGodId.value = godId
     archetype.value = chosenArchetype
+    zone.value = chosenZone
     runState.value = 'playing'
+  }
+
+  const updateStamina = (deltaMs: number, wantsSprint: boolean): boolean => {
+    const active = wantsSprint && stamina.value > 0
+    if (active) {
+      stamina.value = Math.max(0, stamina.value - (STAMINA_DRAIN_PER_SEC * deltaMs) / 1000)
+    } else {
+      stamina.value = Math.min(maxStamina.value, stamina.value + (STAMINA_REGEN_PER_SEC * deltaMs) / 1000)
+    }
+    return active
   }
 
   const acknowledgeSkill = (): void => {
@@ -109,6 +128,9 @@ export const useGameStore = defineStore('game', () => {
     fireMode,
     chosenGodId,
     archetype,
+    zone,
+    stamina,
+    maxStamina,
     enemiesKilled,
     survivalTimeMs,
     runState,
@@ -118,6 +140,7 @@ export const useGameStore = defineStore('game', () => {
     addLeak,
     addXp,
     chooseGod,
+    updateStamina,
     acknowledgeSkill,
     registerKill,
     tickSurvivalTime,

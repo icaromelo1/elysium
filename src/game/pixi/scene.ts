@@ -2,7 +2,7 @@ import { Application, Container, Graphics } from 'pixi.js'
 import {
   COLOR,
   LEAK_POINT,
-  PLAYER_ZONE,
+  NEUTRAL_ZONE,
   ROAD_CURVES,
   ROAD_START,
   SPAWN_POINT,
@@ -98,7 +98,7 @@ export class MapScene {
 
     const zoneMarker = new Graphics()
     zoneMarker
-      .circle(PLAYER_ZONE.x, PLAYER_ZONE.y, PLAYER_ZONE.radius)
+      .circle(NEUTRAL_ZONE.x, NEUTRAL_ZONE.y, NEUTRAL_ZONE.radius)
       .stroke({ width: 2, color: COLOR.player, alpha: 0.35 })
     this.terrainLayer.addChild(zoneMarker)
   }
@@ -115,7 +115,7 @@ export class MapScene {
       this.world.position.set(this.panX, this.panY)
       return
     }
-    this.follow(PLAYER_ZONE.x, PLAYER_ZONE.y)
+    this.follow(NEUTRAL_ZONE.x, NEUTRAL_ZONE.y)
   }
 
   follow(targetX: number, targetY: number): void {
