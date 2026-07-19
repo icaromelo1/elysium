@@ -15,6 +15,13 @@
       <div class="hud__bar hud__bar--xp">
         <div class="hud__bar-fill" :style="{ width: `${xpPercent}%` }"></div>
       </div>
+      <div class="hud__row hud__row--level">
+        <span class="k-label hud__label">STAMINA</span>
+        <span class="hud__value">{{ Math.round(stamina) }}/{{ maxStamina }}</span>
+      </div>
+      <div class="hud__bar hud__bar--stamina">
+        <div class="hud__bar-fill hud__bar-fill--stamina" :style="{ width: `${staminaPercent}%` }"></div>
+      </div>
     </div>
 
     <div class="hud__leaks k-panel">
@@ -50,7 +57,7 @@ import { useGameStore } from '@/stores/useGameStore'
 import type { FireMode } from '@/stores/useGameStore'
 
 const gameStore = useGameStore()
-const { hp, maxHp, level, xp, xpToNext, leaks, leaksLimit, fireMode } = storeToRefs(gameStore)
+const { hp, maxHp, level, xp, xpToNext, leaks, leaksLimit, fireMode, stamina, maxStamina } = storeToRefs(gameStore)
 const { cycleFireMode } = gameStore
 
 const hpPercent = computed(() => (hp.value / maxHp.value) * 100)
@@ -62,6 +69,7 @@ const hpColor = computed(() => {
 })
 
 const xpPercent = computed(() => Math.round((xp.value / xpToNext.value) * 100))
+const staminaPercent = computed(() => Math.round((stamina.value / maxStamina.value) * 100))
 
 const fireModes: { value: FireMode; label: string }[] = [
   { value: 'auto', label: 'AUTO' },
@@ -122,6 +130,14 @@ const fireModes: { value: FireMode; label: string }[] = [
 .hud__bar-fill {
   height: 100%;
   background: var(--player);
+}
+
+.hud__bar--stamina {
+  height: 9px;
+}
+
+.hud__bar-fill--stamina {
+  background: var(--steel);
 }
 
 .hud__leaks {

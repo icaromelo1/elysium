@@ -14,17 +14,19 @@ import { onMounted, onUnmounted, ref, watch } from 'vue'
 import type { Ticker } from 'pixi.js'
 import { useGameStore } from '@/stores/useGameStore'
 import { MapScene } from '@/game/pixi/scene'
-import { PlayerAvatar } from '@/game/pixi/player'
+import { PlayerAvatar, type MovementConstraint } from '@/game/pixi/player'
 import { EnemyPool, type Enemy } from '@/game/pixi/enemy'
 import { CombatTicker, type CombatContext } from '@/game/pixi/combat'
+import { CombatFxLayer } from '@/game/pixi/combatFx'
 import { WaveSpawner } from '@/game/pixi/waveSpawner'
-import { PLAYER_START, PLAYER_ZONE } from '@/game/mapDef'
+import { PLAYER_START, NEUTRAL_ZONE } from '@/game/mapDef'
 import HUD from '@/components/HUD.vue'
 import SkillCard from '@/components/SkillCard.vue'
 import ClassSelect from '@/components/ClassSelect.vue'
 import GameOverPanel from '@/components/GameOverPanel.vue'
 
 const MOVE_SPEED = 220
+const SPRINT_MULTIPLIER = 2
 const ENEMY_SPEED = 70
 const ENEMY_HP = 40
 const FIRE_INTERVAL_MS = 1000
@@ -41,6 +43,7 @@ let scene: MapScene | null = null
 let player: PlayerAvatar | null = null
 let enemyPool: EnemyPool | null = null
 let combatTicker: CombatTicker | null = null
+let combatFx: CombatFxLayer | null = null
 let waveSpawner: WaveSpawner | null = null
 let mouseWorldPos: { x: number; y: number } | null = null
 
@@ -119,6 +122,7 @@ function resetGameplayState(): void {
   player.facing = { x: 0, y: 1 }
   player.root.position.set(player.x, player.y)
   combatTicker = new CombatTicker()
+  combatFx?.clear()
   waveSpawner = new WaveSpawner()
   scene?.follow(player.x, player.y)
 }
@@ -130,8 +134,11 @@ function spawnEnemy(): void {
 }
 
 function handleHit(target: Enemy, damage: number): void {
-  target.hp -= damage
-  if (target.hp <= 0 && enemyPool) {
+  if (!enemyPool || !player) return
+  combatFx?.spawnAttackLine(player.x, player.y, target.x, target.y)
+  combatFx?.spawnDamageNumber(target.x, target.y, damage)
+  enemyPool.applyDamage(target, damage)
+  if (target.hp <= 0) {
     enemyPool.despawn(target)
     gameStore.registerKill()
     gameStore.addXp(XP_PER_KILL)
@@ -150,17 +157,27 @@ function applyEnemyContactDamage(deltaMs: number): void {
   }
 }
 
+function movementConstraint(): MovementConstraint {
+  const zone = gameStore.zone
+  if (zone === 'neutra') {
+    return { kind: 'neutral' }
+  }
+  return { kind: 'zone', side: zone, canCross: gameStore.archetype === 'nomade-entre-zonas' }
+}
+
 function onTick(deltaMs: number): void {
-  if (!scene || !player || !enemyPool || !combatTicker || !waveSpawner) return
+  if (!scene || !player || !enemyPool || !combatTicker || !waveSpawner || !combatFx) return
 
   if (gameStore.runState !== 'playing') {
     return
   }
 
   const { dx, dy } = movementInput()
+  const wantsSprint = pressedKeys.has('shift') && (dx !== 0 || dy !== 0)
+  const sprintActive = gameStore.updateStamina(deltaMs, wantsSprint)
   if (dx !== 0 || dy !== 0) {
-    const step = (MOVE_SPEED * deltaMs) / 1000
-    player.move(dx * step, dy * step)
+    const step = (MOVE_SPEED * (sprintActive ? SPRINT_MULTIPLIER : 1) * deltaMs) / 1000
+    player.move(dx * step, dy * step, movementConstraint())
   }
 
   if (!scene.isFreeMode()) {
@@ -173,7 +190,7 @@ function onTick(deltaMs: number): void {
     player,
     enemies: enemyPool.activeEnemies,
     fireMode: gameStore.fireMode,
-    range: PLAYER_ZONE.radius,
+    range: NEUTRAL_ZONE.radius,
     damagePerTick: gameStore.archetype === 'imovel' ? DAMAGE_PER_TICK * IMMOBILE_DAMAGE_MULTIPLIER : DAMAGE_PER_TICK,
     fireIntervalMs: FIRE_INTERVAL_MS,
     mouseWorldPos,
@@ -183,6 +200,7 @@ function onTick(deltaMs: number): void {
   applyEnemyContactDamage(deltaMs)
   waveSpawner.update(deltaMs, spawnEnemy)
   gameStore.tickSurvivalTime(deltaMs)
+  combatFx.update(deltaMs)
 }
 
 function onSkillClosed(): void {
@@ -209,6 +227,8 @@ onMounted(async () => {
   scene.addEntity(player.root)
   enemyPool = new EnemyPool()
   combatTicker = new CombatTicker()
+  combatFx = new CombatFxLayer()
+  scene.addEntity(combatFx.container)
   waveSpawner = new WaveSpawner()
 
   scene.fitToViewport()
@@ -241,6 +261,7 @@ onUnmounted(() => {
   player = null
   enemyPool = null
   combatTicker = null
+  combatFx = null
   waveSpawner = null
 })
 </script>
