@@ -2,7 +2,10 @@
   <div class="admin-panel">
     <div class="admin-panel-header">
       <span class="admin-panel-title">PAINEL DE AJUSTE — ELYSIUM</span>
-      <span class="admin-panel-close" @click="emit('close')">FECHAR (`) ✕</span>
+      <div class="admin-panel-header-actions">
+        <span class="admin-panel-reset" @click="onReset">ASSAR UPGRADES NO BASE ↻</span>
+        <span class="admin-panel-close" @click="emit('close')">FECHAR (`) ✕</span>
+      </div>
     </div>
     <div class="admin-panel-body">
       <div class="admin-panel-group">
@@ -93,6 +96,15 @@ const progressionFields = [
   { key: 'healCapPercent' as const, label: 'Cura teto %' },
   { key: 'xpBase' as const, label: 'XP base' },
 ]
+
+const onReset = (): void => {
+  tunables.damagePerTick *= gameStore.liveStats.damageMultiplier
+  tunables.moveSpeed *= gameStore.liveStats.moveSpeedMultiplier
+  tunables.fireIntervalMs /= gameStore.liveStats.attackSpeedMultiplier
+  tunables.meleeRange *= gameStore.liveStats.rangeMultiplier
+  tunables.projectileRange *= gameStore.liveStats.rangeMultiplier
+  tunables.maxHp = gameStore.maxHp
+}
 </script>
 
 <style scoped>
@@ -129,6 +141,23 @@ const progressionFields = [
   letter-spacing: 2px;
   color: var(--gold);
   font-size: 13px;
+}
+
+.admin-panel-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.admin-panel-reset {
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  color: var(--gold);
+  cursor: pointer;
+}
+
+.admin-panel-reset:hover {
+  text-decoration: underline;
 }
 
 .admin-panel-close {
