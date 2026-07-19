@@ -21,6 +21,13 @@ export interface Enemy {
   y: number
   alive: boolean
   flashElapsedMs: number
+  stunRemainingMs: number
+  shredRemainingMs: number
+  shredPercent: number
+  dotRemainingMs: number
+  dotTickMs: number
+  dotNextTickMs: number
+  dotDamagePerTick: number
 }
 
 const createEnemy = (): Enemy => {
@@ -56,6 +63,13 @@ const createEnemy = (): Enemy => {
     y: WAYPOINTS[0]?.y ?? 0,
     alive: false,
     flashElapsedMs: 0,
+    stunRemainingMs: 0,
+    shredRemainingMs: 0,
+    shredPercent: 0,
+    dotRemainingMs: 0,
+    dotTickMs: 0,
+    dotNextTickMs: 0,
+    dotDamagePerTick: 0,
   }
 }
 
@@ -93,6 +107,13 @@ export class EnemyPool {
     enemy.alive = true
     enemy.flashElapsedMs = 0
     enemy.flashOverlay.alpha = 0
+    enemy.stunRemainingMs = 0
+    enemy.shredRemainingMs = 0
+    enemy.shredPercent = 0
+    enemy.dotRemainingMs = 0
+    enemy.dotTickMs = 0
+    enemy.dotNextTickMs = 0
+    enemy.dotDamagePerTick = 0
     enemy.root.position.set(enemy.x, enemy.y)
     enemy.root.visible = true
     const color = ENEMY_COLORS[this.spawnCount % ENEMY_COLORS.length] ?? ENEMY_COLORS[0] ?? 0xffffff
@@ -114,19 +135,54 @@ export class EnemyPool {
   }
 
   applyDamage(enemy: Enemy, amount: number): void {
-    enemy.hp -= amount
+    const shredMultiplier = enemy.shredRemainingMs > 0 ? 1 + enemy.shredPercent / 100 : 1
+    enemy.hp -= amount * shredMultiplier
     paintHpBar(enemy)
     enemy.flashElapsedMs = FLASH_DURATION_MS
     enemy.flashOverlay.alpha = 1
   }
 
-  update(deltaMs: number, onLeak: (enemy: Enemy) => void, speed: number): void {
+  applyShred(enemy: Enemy, percent: number, durationMs: number): void {
+    enemy.shredPercent = percent
+    enemy.shredRemainingMs = durationMs
+  }
+
+  applyStun(enemy: Enemy, durationMs: number): void {
+    enemy.stunRemainingMs = Math.max(enemy.stunRemainingMs, durationMs)
+  }
+
+  applyDot(enemy: Enemy, damagePerTick: number, durationMs: number, tickMs: number): void {
+    enemy.dotDamagePerTick = damagePerTick
+    enemy.dotRemainingMs = durationMs
+    enemy.dotTickMs = tickMs
+    enemy.dotNextTickMs = tickMs
+  }
+
+  update(deltaMs: number, onLeak: (enemy: Enemy) => void, speed: number, onDotDamage?: (enemy: Enemy, damage: number) => void): void {
     const toDespawn: Enemy[] = []
 
     for (const enemy of this.active) {
       if (enemy.flashElapsedMs > 0) {
         enemy.flashElapsedMs = Math.max(0, enemy.flashElapsedMs - deltaMs)
         enemy.flashOverlay.alpha = enemy.flashElapsedMs / FLASH_DURATION_MS
+      }
+
+      if (enemy.shredRemainingMs > 0) {
+        enemy.shredRemainingMs = Math.max(0, enemy.shredRemainingMs - deltaMs)
+      }
+
+      if (enemy.dotRemainingMs > 0) {
+        enemy.dotRemainingMs = Math.max(0, enemy.dotRemainingMs - deltaMs)
+        enemy.dotNextTickMs -= deltaMs
+        if (enemy.dotNextTickMs <= 0) {
+          enemy.dotNextTickMs += enemy.dotTickMs
+          onDotDamage?.(enemy, enemy.dotDamagePerTick)
+        }
+      }
+
+      if (enemy.stunRemainingMs > 0) {
+        enemy.stunRemainingMs = Math.max(0, enemy.stunRemainingMs - deltaMs)
+        continue
       }
 
       const target = WAYPOINTS[enemy.waypointIndex]
