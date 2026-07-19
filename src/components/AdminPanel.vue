@@ -10,24 +10,33 @@
     <div class="admin-panel-body">
       <div class="admin-panel-group">
         <h3>Jogador</h3>
-        <label v-for="field in playerFields" :key="field.key" class="admin-panel-field">
-          <span class="name">{{ field.label }}</span>
-          <input type="number" v-model.number="tunables[field.key]" step="any" />
-        </label>
+        <div v-for="field in playerFields" :key="field.key" class="admin-panel-field">
+          <label class="admin-panel-field-row">
+            <span class="name">{{ field.label }}</span>
+            <input type="number" v-model.number="tunables[field.key]" step="any" />
+          </label>
+          <div class="admin-panel-field-caption">{{ captionFor(field.key) }}</div>
+        </div>
       </div>
       <div class="admin-panel-group">
         <h3>Inimigos</h3>
-        <label v-for="field in enemyFields" :key="field.key" class="admin-panel-field">
-          <span class="name">{{ field.label }}</span>
-          <input type="number" v-model.number="tunables[field.key]" step="any" />
-        </label>
+        <div v-for="field in enemyFields" :key="field.key" class="admin-panel-field">
+          <label class="admin-panel-field-row">
+            <span class="name">{{ field.label }}</span>
+            <input type="number" v-model.number="tunables[field.key]" step="any" />
+          </label>
+          <div class="admin-panel-field-caption">{{ captionFor(field.key) }}</div>
+        </div>
       </div>
       <div class="admin-panel-group">
         <h3>Progressão</h3>
-        <label v-for="field in progressionFields" :key="field.key" class="admin-panel-field">
-          <span class="name">{{ field.label }}</span>
-          <input type="number" v-model.number="tunables[field.key]" step="any" />
-        </label>
+        <div v-for="field in progressionFields" :key="field.key" class="admin-panel-field">
+          <label class="admin-panel-field-row">
+            <span class="name">{{ field.label }}</span>
+            <input type="number" v-model.number="tunables[field.key]" step="any" />
+          </label>
+          <div class="admin-panel-field-caption">{{ captionFor(field.key) }}</div>
+        </div>
       </div>
       <div class="admin-panel-readout">
         <h3>Valores calculados agora (somente leitura)</h3>
@@ -63,13 +72,41 @@
 <script setup lang="ts">
 import { useQuasar } from 'quasar'
 import { useGameStore } from '@/stores/useGameStore'
-import { useTunablesStore } from '@/stores/useTunablesStore'
+import type { LiveStats } from '@/stores/useGameStore'
+import { TUNABLE_DEFAULTS, useTunablesStore, type TunableKey } from '@/stores/useTunablesStore'
 
 const emit = defineEmits(['close'])
 
 const gameStore = useGameStore()
 const tunables = useTunablesStore()
 const $q = useQuasar()
+
+const MULTIPLIER_FIELD: Partial<Record<TunableKey, keyof LiveStats>> = {
+  moveSpeed: 'moveSpeedMultiplier',
+  damagePerTick: 'damageMultiplier',
+  fireIntervalMs: 'attackSpeedMultiplier',
+  meleeRange: 'rangeMultiplier',
+  projectileRange: 'rangeMultiplier',
+}
+
+const captionFor = (key: TunableKey): string => {
+  const base = TUNABLE_DEFAULTS[key]
+
+  if (key === 'maxHp') {
+    const current = gameStore.maxHp
+    const mult = tunables.maxHp !== 0 ? current / tunables.maxHp : 1
+    return `padrão: ${base} · build atual: ×${mult.toFixed(2)} → ${current.toFixed(1)}`
+  }
+
+  const multiplierKey = MULTIPLIER_FIELD[key]
+  if (multiplierKey) {
+    const mult = gameStore.liveStats[multiplierKey]
+    const current = key === 'fireIntervalMs' ? tunables[key] / mult : tunables[key] * mult
+    return `padrão: ${base} · build atual: ×${mult.toFixed(2)} → ${current.toFixed(key === 'fireIntervalMs' ? 0 : 1)}`
+  }
+
+  return `padrão: ${base}`
+}
 
 const playerFields = [
   { key: 'moveSpeed' as const, label: 'Velocidade base' },
@@ -201,16 +238,26 @@ const onReset = (): void => {
 }
 
 .admin-panel-field {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
   padding: 6px 0;
   font-size: 12.5px;
 }
 
+.admin-panel-field-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
 .admin-panel-field .name {
   color: var(--ink-dim);
+}
+
+.admin-panel-field-caption {
+  margin-top: 3px;
+  font-size: 10px;
+  color: var(--ink-faint);
+  font-family: 'SF Mono', monospace;
 }
 
 .admin-panel-field input {
