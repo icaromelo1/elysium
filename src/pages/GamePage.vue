@@ -36,6 +36,7 @@
     />
     <GameOverPanel v-if="gameStore.runState === 'gameover'" />
     <SkillTreeMap v-if="showSkillMap" @close="showSkillMap = false" />
+    <AdminPanel v-if="showAdminPanel" @close="showAdminPanel = false" />
   </div>
 </template>
 
@@ -44,6 +45,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import type { Ticker } from 'pixi.js'
 import { useGameStore } from '@/stores/useGameStore'
 import type { ForkAxis } from '@/stores/useGameStore'
+import { useTunablesStore } from '@/stores/useTunablesStore'
 import { MapScene } from '@/game/pixi/scene'
 import { PlayerAvatar, type MovementConstraint } from '@/game/pixi/player'
 import { EnemyPool, type Enemy } from '@/game/pixi/enemy'
@@ -61,6 +63,7 @@ import {
   equipNode,
   pierceExtraTargets as effectsPierceExtraTargets,
   registerKill as registerEffectKill,
+  resetCombo,
   resolveOnHit,
   statMultiplier,
   tick as tickEffects,
@@ -74,21 +77,10 @@ import ClassSelect from '@/components/ClassSelect.vue'
 import ZoneSelect from '@/components/ZoneSelect.vue'
 import GameOverPanel from '@/components/GameOverPanel.vue'
 import SkillTreeMap from '@/components/SkillTreeMap.vue'
+import AdminPanel from '@/components/AdminPanel.vue'
 
-const BASE_MOVE_SPEED = 220
-const SPRINT_MULTIPLIER = 2
-const ENEMY_SPEED = 70
-const ENEMY_HP = 40
-const BASE_FIRE_INTERVAL_MS = 1000
-const BASE_DAMAGE_PER_TICK = 10
 const IMMOBILE_DAMAGE_MULTIPLIER = 1.5
-const AFFINITY_MULTIPLIER = 1.15
 const XP_PER_KILL = 4
-const ENEMY_HIT_PLAYER_DAMAGE = 8
-const ENEMY_HIT_RANGE = 40
-const MELEE_RANGE = 90
-const PROJECTILE_BASE_RANGE = 180
-const BASE_MAX_HP = 100
 const SUMMON_TARGET_RANGE = 400
 const ULTIMATE_AOE_RADIUS = 150
 
@@ -107,8 +99,10 @@ const ROLE_OPTIONS: ForkOption[] = [
 ]
 
 const gameStore = useGameStore()
+const tunables = useTunablesStore()
 const hostEl = ref<HTMLElement | null>(null)
 const showSkillMap = ref(false)
+const showAdminPanel = ref(false)
 
 const capstoneOptions = computed<ForkOption[]>(() => {
   if (!gameStore.archetypeId) return []
@@ -158,6 +152,10 @@ function onKeyDown(event: KeyboardEvent): void {
   }
   if (key === 'm') {
     showSkillMap.value = !showSkillMap.value
+    return
+  }
+  if (key === '`') {
+    showAdminPanel.value = !showAdminPanel.value
     return
   }
   pressedKeys.add(key)
@@ -221,7 +219,7 @@ function resetGameplayState(): void {
 
 function spawnEnemy(): void {
   if (!enemyPool || !scene) return
-  const enemy = enemyPool.spawn(ENEMY_HP)
+  const enemy = enemyPool.spawn(tunables.enemyHp)
   scene.addEntity(enemy.root)
 }
 
@@ -292,8 +290,8 @@ function applyEnemyContactDamage(deltaMs: number): void {
     const dx = enemy.x - player.x
     const dy = enemy.y - player.y
     const distance = Math.sqrt(dx * dx + dy * dy)
-    if (distance <= ENEMY_HIT_RANGE) {
-      const raw = (ENEMY_HIT_PLAYER_DAMAGE * deltaMs) / 1000
+    if (distance <= tunables.enemyContactRange) {
+      const raw = (tunables.enemyContactDamage * deltaMs) / 1000
       gameStore.takeDamage(raw * (1 - shieldPercent / 100))
     }
   }
@@ -311,7 +309,7 @@ function syncEquippedSkills(): void {
     const node = SKILL_NODES.find((n) => n.id === id)
     if (node) equipNode(effectsState, id, node.effect)
   }
-  const newMaxHp = BASE_MAX_HP * statMultiplier(effectsState, 'maxHp')
+  const newMaxHp = tunables.maxHp * statMultiplier(effectsState, 'maxHp')
   gameStore.setMaxHp(newMaxHp)
 }
 
@@ -351,20 +349,24 @@ function onTick(deltaMs: number): void {
     return
   }
 
+  const scaledDeltaMs = deltaMs * gameStore.gameSpeed
+
   const damageMultiplier =
     statMultiplier(effectsState, 'damage') *
     (1 + comboDamageBonusPercent(effectsState) / 100) *
-    (gameStore.affinityAligned ? AFFINITY_MULTIPLIER : 1) *
+    (gameStore.affinityAligned ? tunables.affinityMultiplier : 1) *
     (effectsState.ultimateRemainingMs > 0 && effectsState.ultimateGrants.includes('damage-boost') ? 1.3 : 1)
   const moveSpeedMultiplier = statMultiplier(effectsState, 'moveSpeed')
   const attackSpeedMultiplier = statMultiplier(effectsState, 'attackSpeed')
   const rangeMultiplier = statMultiplier(effectsState, 'range')
 
+  gameStore.setLiveStats({ damageMultiplier, moveSpeedMultiplier, attackSpeedMultiplier, rangeMultiplier })
+
   const { dx, dy } = movementInput()
   const wantsSprint = pressedKeys.has('shift') && (dx !== 0 || dy !== 0)
-  const sprintActive = gameStore.updateStamina(deltaMs, wantsSprint)
+  const sprintActive = gameStore.updateStamina(scaledDeltaMs, wantsSprint)
   if (dx !== 0 || dy !== 0) {
-    const step = (BASE_MOVE_SPEED * moveSpeedMultiplier * (sprintActive ? SPRINT_MULTIPLIER : 1) * deltaMs) / 1000
+    const step = (tunables.moveSpeed * moveSpeedMultiplier * (sprintActive ? tunables.sprintMultiplier : 1) * scaledDeltaMs) / 1000
     player.move(dx * step, dy * step, movementConstraint())
   }
 
@@ -372,13 +374,13 @@ function onTick(deltaMs: number): void {
     scene.follow(player.x, player.y)
   }
 
-  enemyPool.update(deltaMs, () => gameStore.addLeak(), ENEMY_SPEED, (enemy, damage) => {
+  enemyPool.update(scaledDeltaMs, () => gameStore.addLeak(), tunables.enemySpeed, (enemy, damage) => {
     combatFx?.spawnDamageNumber(enemy.x, enemy.y, damage)
     applyRawDamage(enemy, damage)
   })
 
   const isMelee = gameStore.weaponRange !== 'projetil'
-  const baseRange = isMelee ? MELEE_RANGE : PROJECTILE_BASE_RANGE
+  const baseRange = isMelee ? tunables.meleeRange : tunables.projectileRange
   const range = baseRange * rangeMultiplier
 
   const ctx: CombatContext = {
@@ -387,11 +389,11 @@ function onTick(deltaMs: number): void {
     fireMode: isMelee ? 'auto' : gameStore.fireMode,
     range,
     damagePerTick:
-      BASE_DAMAGE_PER_TICK * damageMultiplier * (gameStore.archetype === 'imovel' ? IMMOBILE_DAMAGE_MULTIPLIER : 1),
-    fireIntervalMs: BASE_FIRE_INTERVAL_MS / attackSpeedMultiplier,
+      tunables.damagePerTick * damageMultiplier * (gameStore.archetype === 'imovel' ? IMMOBILE_DAMAGE_MULTIPLIER : 1),
+    fireIntervalMs: tunables.fireIntervalMs / attackSpeedMultiplier,
     mouseWorldPos,
   }
-  combatTicker.update(deltaMs, ctx, handleHit, effectsPierceExtraTargets(effectsState))
+  combatTicker.update(scaledDeltaMs, ctx, handleHit, effectsPierceExtraTargets(effectsState), () => resetCombo(effectsState))
   player.setRange(ctx.range)
 
   if (isMelee && !nearestEnemyWithin(range)) {
@@ -399,16 +401,14 @@ function onTick(deltaMs: number): void {
     if (dash) {
       const target = nearestEnemyWithin(dash.range)
       if (target) {
-        player.x = target.x
-        player.y = target.y
-        player.root.position.set(player.x, player.y)
+        player.move(target.x - player.x, target.y - player.y, movementConstraint())
       }
     }
   }
 
   activateUltimateIfReady(effectsState, capstoneEffectFor())
 
-  const tickResult = tickEffects(effectsState, deltaMs)
+  const tickResult = tickEffects(effectsState, scaledDeltaMs)
   if (tickResult.selfHealPercent) {
     gameStore.heal(gameStore.maxHp * (tickResult.selfHealPercent / 100))
   }
@@ -420,10 +420,10 @@ function onTick(deltaMs: number): void {
     }
   }
 
-  applyEnemyContactDamage(deltaMs)
-  waveSpawner.update(deltaMs, spawnEnemy)
-  gameStore.tickSurvivalTime(deltaMs)
-  combatFx.update(deltaMs)
+  applyEnemyContactDamage(scaledDeltaMs)
+  waveSpawner.update(scaledDeltaMs, spawnEnemy, tunables.waveSpawnIntervalMs)
+  gameStore.tickSurvivalTime(scaledDeltaMs)
+  combatFx.update(scaledDeltaMs)
 }
 
 function onSkillClosed(): void {}
@@ -455,6 +455,11 @@ watch(
 watch(
   () => gameStore.chosenSkillIds.length,
   () => syncEquippedSkills(),
+)
+
+watch(
+  () => gameStore.zone,
+  (zone) => scene?.setNeutralZoneVisible(zone === 'neutra'),
 )
 
 onMounted(async () => {
