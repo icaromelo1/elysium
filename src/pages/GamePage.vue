@@ -3,9 +3,9 @@
     <div ref="hostEl" class="game-canvas-host" />
 
     <HUD v-if="gameStore.runState === 'playing'" />
-    <SkillCard v-if="gameStore.runState === 'levelup'" @close="onSkillClosed" />
-    <ClassSelect v-if="gameStore.runState === 'classselect'" @close="onClassClosed" />
-    <ZoneSelect v-if="gameStore.runState === 'zoneselect'" @close="onZoneClosed" />
+    <SkillCard v-if="gameStore.runState === 'levelup'" />
+    <ClassSelect v-if="gameStore.runState === 'classselect'" />
+    <ZoneSelect v-if="gameStore.runState === 'zoneselect'" />
     <PlacementSelect
       v-if="gameStore.runState === 'placement'"
       :has-preview="placementPreview !== null"
@@ -92,6 +92,8 @@ const SUMMON_TARGET_RANGE = 400
 const ULTIMATE_AOE_RADIUS = 150
 const PLACEMENT_MARGIN = ROAD_WIDTH / 2 + PLAYER_RADIUS
 const PLACEMENT_MARKER_RADIUS = 24
+const BASE_MAX_STAMINA = 100
+const ZOOM_WHEEL_SENSITIVITY = 0.001
 
 const RANGE_OPTIONS: ForkOption[] = [
   { value: 'melee', label: 'Melee', description: 'Combate corpo a corpo, alcance curto.' },
@@ -135,6 +137,8 @@ let combatFx: CombatFxLayer | null = null
 let waveSpawner: WaveSpawner | null = null
 let mouseWorldPos: { x: number; y: number } | null = null
 let placementMarker: Graphics | null = null
+let isDraggingCamera = false
+let dragLastPos: { x: number; y: number } | null = null
 let effectsState: PlayerEffectsState = createEffectsState()
 
 const pressedKeys = new Set<string>()
@@ -159,6 +163,8 @@ function onKeyDown(event: KeyboardEvent): void {
     event.preventDefault()
     if (scene) {
       scene.setFreeMode(!scene.isFreeMode())
+      isDraggingCamera = false
+      dragLastPos = null
     }
     return
   }
@@ -198,6 +204,17 @@ function toWorldCoords(clientX: number, clientY: number): { x: number; y: number
 function onPointerMove(event: PointerEvent): void {
   const world = toWorldCoords(event.clientX, event.clientY)
   if (world) mouseWorldPos = world
+
+  if (isDraggingCamera && dragLastPos) {
+    scene?.panBy(event.clientX - dragLastPos.x, event.clientY - dragLastPos.y)
+    dragLastPos = { x: event.clientX, y: event.clientY }
+  }
+}
+
+function onWheel(event: WheelEvent): void {
+  if (!scene) return
+  event.preventDefault()
+  scene.setZoom(scene.getZoom() - event.deltaY * ZOOM_WHEEL_SENSITIVITY)
 }
 
 function isValidPlacement(x: number, y: number): boolean {
@@ -218,12 +235,24 @@ function paintPlacementMarker(x: number, y: number, valid: boolean): void {
 }
 
 function onPointerDownOnCanvas(event: PointerEvent): void {
-  if (gameStore.runState !== 'placement') return
-  const world = toWorldCoords(event.clientX, event.clientY)
-  if (!world) return
-  placementPreview.value = world
-  placementValid.value = isValidPlacement(world.x, world.y)
-  paintPlacementMarker(world.x, world.y, placementValid.value)
+  if (gameStore.runState === 'placement') {
+    const world = toWorldCoords(event.clientX, event.clientY)
+    if (!world) return
+    placementPreview.value = world
+    placementValid.value = isValidPlacement(world.x, world.y)
+    paintPlacementMarker(world.x, world.y, placementValid.value)
+    return
+  }
+
+  if (scene?.isFreeMode()) {
+    isDraggingCamera = true
+    dragLastPos = { x: event.clientX, y: event.clientY }
+  }
+}
+
+function onPointerUpOnCanvas(): void {
+  isDraggingCamera = false
+  dragLastPos = null
 }
 
 function onPlacementConfirmed(): void {
@@ -359,6 +388,7 @@ function syncEquippedSkills(): void {
   }
   const newMaxHp = tunables.maxHp * statMultiplier(effectsState, 'maxHp')
   gameStore.setMaxHp(newMaxHp)
+  gameStore.setMaxStamina(BASE_MAX_STAMINA * statMultiplier(effectsState, 'maxStamina'))
 }
 
 function capstoneEffectFor(): EffectSpec | null {
@@ -371,7 +401,8 @@ function movementConstraint(): MovementConstraint {
   if (zone === 'neutra') {
     return { kind: 'neutral' }
   }
-  return { kind: 'zone', side: zone, canCross: gameStore.archetype === 'nomade-entre-zonas' }
+  const canCross = gameStore.archetype === 'nomade-entre-zonas' || gameStore.archetypeId === 'sentinela'
+  return { kind: 'zone', side: zone, canCross }
 }
 
 function nearestEnemyWithin(range: number): Enemy | null {
@@ -412,7 +443,7 @@ function onTick(deltaMs: number): void {
 
   const { dx, dy } = movementInput()
   const wantsSprint = pressedKeys.has('shift') && (dx !== 0 || dy !== 0)
-  const sprintActive = gameStore.updateStamina(scaledDeltaMs, wantsSprint)
+  const sprintActive = gameStore.updateStamina(scaledDeltaMs, wantsSprint, statMultiplier(effectsState, 'staminaRegen'))
   if (dx !== 0 || dy !== 0) {
     const step = (tunables.moveSpeed * moveSpeedMultiplier * (sprintActive ? tunables.sprintMultiplier : 1) * scaledDeltaMs) / 1000
     player.move(dx * step, dy * step, movementConstraint())
@@ -480,12 +511,6 @@ function onTick(deltaMs: number): void {
   gameStore.tickSurvivalTime(scaledDeltaMs)
   combatFx.update(scaledDeltaMs)
 }
-
-function onSkillClosed(): void {}
-
-function onClassClosed(): void {}
-
-function onZoneClosed(): void {}
 
 function onForkChosen(axis: ForkAxis, value: string): void {
   gameStore.chooseFork(axis, value as WeaponRange | DamageType | Role)
@@ -557,6 +582,9 @@ onMounted(async () => {
   window.addEventListener('resize', onWindowResize)
   hostEl.value.addEventListener('pointermove', onPointerMove)
   hostEl.value.addEventListener('pointerdown', onPointerDownOnCanvas)
+  hostEl.value.addEventListener('pointerup', onPointerUpOnCanvas)
+  hostEl.value.addEventListener('pointerleave', onPointerUpOnCanvas)
+  hostEl.value.addEventListener('wheel', onWheel, { passive: false })
 
   if (gameStore.runState === 'menu') {
     gameStore.startRun()
@@ -570,6 +598,9 @@ onUnmounted(() => {
   window.removeEventListener('resize', onWindowResize)
   hostEl.value?.removeEventListener('pointermove', onPointerMove)
   hostEl.value?.removeEventListener('pointerdown', onPointerDownOnCanvas)
+  hostEl.value?.removeEventListener('pointerup', onPointerUpOnCanvas)
+  hostEl.value?.removeEventListener('pointerleave', onPointerUpOnCanvas)
+  hostEl.value?.removeEventListener('wheel', onWheel)
   player?.destroy()
   scene?.destroy()
   scene = null
