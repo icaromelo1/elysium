@@ -23,16 +23,17 @@ Troca os blobs de terreno por uma grade de tiles de verdade.
 - **Props decorativos** (coluna dórica, coluna quebrada, estátua, oliveira, cipreste, ânfora) — sprites individuais gerados no mesmo pipeline, posicionados sobre a grade em pontos fixos, sem colisão (só cenário).
 - **Impacto:** `TERRAIN_BLOBS` (`mapDef.ts`) sai; `scene.ts`'s `drawStatic()` ganha a renderização de tilemap + props no lugar dos blobs.
 
-## Fase 2 — Caminho como autotile
+## Fase 2 — Caminho em ângulo livre (não preso à grade)
 
-O caminho atual (curva orgânica corrigida na rodada anterior) é substituído por um caminho novo, desenhado do zero pra caber bem na grade — a correção de alinhamento que fizemos foi validação de conceito de um protótipo, não precisa ser preservada.
+O caminho **não** fica preso à grade de tiles — continua como polilinha livre, igual hoje (`WAYPOINTS` em coordenadas de mundo, sem virar célula), pra poder ter qualquer ângulo de virada, não só 90°/45°. O tilemap da Fase 1 e o caminho da Fase 2 coexistem como duas camadas independentes: uma é grade, a outra não.
 
-- **Layout novo:** `WAYPOINTS` vira uma sequência de células de grade (não mais coordenadas livres), formando um caminho com viradas em ângulo reto — desenhado pensando em ficar bom com autotile.
-- **Autotile mínimo:** 2 sprites-base (reto + curva), com rotação aplicada em código (`sprite.rotation`) pras 4 orientações de reta (H/V) e as 4 de curva — não precisa gerar 8 imagens diferentes, só 2.
-- **Seleção de peça:** função pura que olha os vizinhos de cada célula de caminho (tem vizinho reto acima/abaixo/esquerda/direita?) e decide reto vs curva + rotação — lógica clássica de autotile, pequena.
-- **`enemy.ts`:** continua fazendo lerp entre pontos consecutivos — só troca a fonte dos pontos (centros das células do novo caminho em vez das coordenadas antigas).
-- **Zona (`sideOfRoad`/`roadYAtX`):** recalculada em cima do novo caminho em grade.
-- **Impacto:** `drawFilletPath`/`ROAD_DRAW_POINTS` (adicionados na rodada anterior) saem, substituídos pelo autotile.
+- **Layout:** `WAYPOINTS` continua como está — coordenadas livres, sem conversão pra célula. Nenhuma mudança de layout é necessária só por causa do autotile (o caminho pode inclusive ficar mais orgânico agora, já que não precisa "caber" numa grade).
+- **1 sprite-base (reto):** só a peça reta é gerada como arte — sem sprite de curva dedicado.
+- **Trecho reto = 1 sprite rotacionado no ângulo exato:** pra cada segmento entre dois pontos consecutivos do caminho, o sprite reto é desenhado com `sprite.rotation` = o ângulo real do segmento (`Math.atan2(dy, dx)`), não travado em 0°/90°/45° — cobre qualquer inclinação.
+- **Curva = carimbo do mesmo sprite ao longo do arco:** nos cantos, o caminho já usa `drawFilletPath`/`arcTo` (fix da rodada anterior) pra arredondar com raio fixo — a curva visual reaproveita esse mesmo arco: em vez de desenhar 1 curva de asfalto sólida, o sprite reto é "carimbado" em pequenos passos angulares ao longo do arco (ex.: a cada ~8-10°), cada carimbo rotacionado pro ângulo tangente naquele ponto do arco. O resultado é uma curva suave feita 100% do sprite reto, em qualquer ângulo de virada — sem tile de curva separado pra manter.
+- **`enemy.ts`:** sem mudança — já faz lerp em cima do `WAYPOINTS`/fillet existente, essa fase não mexe na lógica de movimento, só em como o caminho é desenhado.
+- **Zona (`sideOfRoad`/`roadYAtX`):** sem mudança — já opera sobre `WAYPOINTS` livre.
+- **Impacto:** `drawFilletPath` continua existindo (mesma matemática do arco), mas passa a orientar o carimbo de sprites em vez de um `Graphics.stroke()` sólido. `ROAD_DRAW_POINTS` é reaproveitado como a fonte dos segmentos/arcos.
 
 ## Fase 3 — Horário fixo por mapa
 
@@ -58,9 +59,9 @@ Construído em cima da Fase 3. **Escopo: só os props do cenário (colunas, árv
 
 ## Impacto no código existente (visão geral das 4 fases)
 
-- **`mapDef.ts`** — `TERRAIN_BLOBS` sai; `WAYPOINTS` redesenhado pra grade; `sideOfRoad`/`roadYAtX` recalculados pro novo caminho.
-- **`scene.ts`** — `drawStatic()` reescrito (tilemap + props + autotile do caminho); nova camada de iluminação + sombra.
-- **`enemy.ts`** — sem mudança de lógica, só a fonte dos waypoints.
+- **`mapDef.ts`** — `TERRAIN_BLOBS` sai; `WAYPOINTS` permanece livre (sem virar grade); nenhuma mudança em `sideOfRoad`/`roadYAtX`.
+- **`scene.ts`** — `drawStatic()` reescrito (tilemap + props + carimbo de sprite reto ao longo do caminho, ângulo livre); nova camada de iluminação + sombra + sombreado direcional dos tiles.
+- **`enemy.ts`** — sem mudança nenhuma, nem de lógica nem de fonte de dado (`WAYPOINTS` já é o que ele sempre usou).
 - **Novos arquivos:** `src/game/tilemap.ts`, `src/game/lighting.ts`, e um módulo de props/sombra (nome exato decidido na implementação da Fase 1/4).
 - **Novas pastas de asset:** `src/assets/tiles/`, `src/assets/props/` (imagens geradas externamente, carregadas via `Assets.load()` do PixiJS).
 - **`useGameStore.ts`** — sem campo novo obrigatório (o horário/ângulo de luz fica fora da store, ver Fase 4).
