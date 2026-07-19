@@ -62,11 +62,14 @@ export function sideOfRoad(x: number, y: number): ZoneSide {
   return y < roadYAtX(x) ? 'norte' : 'sul'
 }
 
-export const TERRAIN_BLOBS: { x: number; y: number; radius: number; color: number }[] = [
-  { x: -120, y: 340, radius: 320, color: 0x7a8f5a },
-  { x: 760, y: 60, radius: 350, color: 0xc9a227 },
-  { x: 1500, y: 400, radius: 340, color: 0x7a8fa3 },
-]
+export const PALETTE = {
+  oliveira: 0x6f9a52,
+  terra: 0xd8b177,
+  egeu: 0x3b6e8f,
+  terracota: 0xc1592f,
+  marmore: 0xf2e8d5,
+  ouro: 0xb5872a,
+}
 
 export const COLOR = {
   bg: 0x0d0b08,
