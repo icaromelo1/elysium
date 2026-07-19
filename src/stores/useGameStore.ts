@@ -140,6 +140,16 @@ export const useGameStore = defineStore('game', () => {
     runState.value = 'levelup'
   }
 
+  const heal = (amount: number): void => {
+    hp.value = Math.min(maxHp.value, hp.value + amount)
+  }
+
+  const setMaxHp = (newMaxHp: number): void => {
+    const ratio = maxHp.value > 0 ? hp.value / maxHp.value : 1
+    maxHp.value = newMaxHp
+    hp.value = Math.min(newMaxHp, newMaxHp * ratio)
+  }
+
   const addXp = (amount: number): void => {
     xp.value += amount
     while (xp.value >= xpToNext.value) {
@@ -249,6 +259,8 @@ export const useGameStore = defineStore('game', () => {
     affinityAligned,
     startRun,
     takeDamage,
+    heal,
+    setMaxHp,
     addLeak,
     addXp,
     chooseGod,

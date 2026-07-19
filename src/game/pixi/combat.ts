@@ -68,6 +68,18 @@ const closestEnemyInDirection = (
   return closest
 }
 
+export function resolveExtraTargets(ctx: CombatContext, primary: Enemy, count: number): Enemy[] {
+  if (count <= 0) return []
+
+  const candidates = ctx.enemies
+    .filter((enemy) => enemy !== primary)
+    .map((enemy) => ({ enemy, distance: distanceTo(ctx.player.x, ctx.player.y, enemy.x, enemy.y) }))
+    .filter((entry) => entry.distance <= ctx.range)
+    .sort((a, b) => a.distance - b.distance)
+
+  return candidates.slice(0, count).map((entry) => entry.enemy)
+}
+
 export function resolveAttackTarget(ctx: CombatContext): Enemy | null {
   if (ctx.fireMode === 'auto') {
     return closestEnemyInRange(ctx)
@@ -94,13 +106,21 @@ export function resolveAttackTarget(ctx: CombatContext): Enemy | null {
 export class CombatTicker {
   private accumulatorMs = 0
 
-  update(deltaMs: number, ctx: CombatContext, onHit: (target: Enemy, damage: number) => void): void {
+  update(
+    deltaMs: number,
+    ctx: CombatContext,
+    onHit: (target: Enemy, damage: number, isPrimary: boolean) => void,
+    pierceExtraTargets = 0,
+  ): void {
     this.accumulatorMs += deltaMs
     while (this.accumulatorMs >= ctx.fireIntervalMs) {
       this.accumulatorMs -= ctx.fireIntervalMs
       const target = resolveAttackTarget(ctx)
       if (target) {
-        onHit(target, ctx.damagePerTick)
+        onHit(target, ctx.damagePerTick, true)
+        for (const extra of resolveExtraTargets(ctx, target, pierceExtraTargets)) {
+          onHit(extra, ctx.damagePerTick, false)
+        }
       }
     }
   }
