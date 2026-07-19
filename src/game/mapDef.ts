@@ -30,6 +30,8 @@ export const WAYPOINTS: Point[] = [
 export const SPAWN_POINT: Point = { x: 0, y: 540 }
 export const LEAK_POINT: Point = { x: 1920, y: 460 }
 
+export const ROAD_WIDTH = 46
+
 export const NEUTRAL_ZONE = { x: 900, y: 430, radius: 180 }
 export const PLAYER_START: Point = { x: 900, y: 430 }
 
