@@ -5,6 +5,7 @@ import {
   NEUTRAL_ZONE,
   ROAD_CURVES,
   ROAD_START,
+  ROAD_WIDTH,
   SPAWN_POINT,
   TERRAIN_BLOBS,
   WAYPOINTS,
@@ -55,7 +56,7 @@ export class MapScene {
     for (const [cp1, cp2, end] of ROAD_CURVES) {
       roadPath.bezierCurveTo(cp1.x, cp1.y, cp2.x, cp2.y, end.x, end.y)
     }
-    roadPath.stroke({ width: 46, color: COLOR.roadFill })
+    roadPath.stroke({ width: ROAD_WIDTH, color: COLOR.roadFill })
     this.roadLayer.addChild(roadPath)
 
     const roadDash = new Graphics()
