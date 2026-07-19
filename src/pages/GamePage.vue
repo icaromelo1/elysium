@@ -154,7 +154,7 @@ function onKeyDown(event: KeyboardEvent): void {
     showSkillMap.value = !showSkillMap.value
     return
   }
-  if (key === '`') {
+  if (event.code === 'Backquote') {
     showAdminPanel.value = !showAdminPanel.value
     return
   }
