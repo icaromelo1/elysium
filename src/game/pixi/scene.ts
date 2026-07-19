@@ -3,18 +3,39 @@ import {
   COLOR,
   LEAK_POINT,
   NEUTRAL_ZONE,
-  ROAD_CURVES,
-  ROAD_START,
+  ROAD_DRAW_POINTS,
   ROAD_WIDTH,
   SPAWN_POINT,
   TERRAIN_BLOBS,
   WAYPOINTS,
   WORLD_H,
   WORLD_W,
+  type Point,
 } from '../mapDef'
 
 const MIN_ZOOM = 0.6
 const MAX_ZOOM = 2
+const ROAD_CORNER_RADIUS = 40
+
+/**
+ * Desenha uma polilinha com cantos arredondados por raio fixo — o desvio
+ * máximo do caminho reto real (o que os inimigos percorrem) é sempre
+ * `radius`, nunca mais, diferente de uma curva suave que pode "estourar"
+ * pra fora em viradas fechadas.
+ */
+function drawFilletPath(g: Graphics, points: Point[], radius: number): void {
+  const first = points[0]
+  if (!first) return
+  g.moveTo(first.x, first.y)
+  for (let i = 1; i < points.length - 1; i += 1) {
+    const corner = points[i]
+    const next = points[i + 1]
+    if (!corner || !next) continue
+    g.arcTo(corner.x, corner.y, next.x, next.y, radius)
+  }
+  const last = points[points.length - 1]
+  if (last) g.lineTo(last.x, last.y)
+}
 
 export class MapScene {
   app: Application
@@ -54,18 +75,12 @@ export class MapScene {
     }
 
     const roadPath = new Graphics()
-    roadPath.moveTo(ROAD_START.x, ROAD_START.y)
-    for (const [cp1, cp2, end] of ROAD_CURVES) {
-      roadPath.bezierCurveTo(cp1.x, cp1.y, cp2.x, cp2.y, end.x, end.y)
-    }
+    drawFilletPath(roadPath, ROAD_DRAW_POINTS, ROAD_CORNER_RADIUS)
     roadPath.stroke({ width: ROAD_WIDTH, color: COLOR.roadFill })
     this.roadLayer.addChild(roadPath)
 
     const roadDash = new Graphics()
-    roadDash.moveTo(ROAD_START.x, ROAD_START.y)
-    for (const [cp1, cp2, end] of ROAD_CURVES) {
-      roadDash.bezierCurveTo(cp1.x, cp1.y, cp2.x, cp2.y, end.x, end.y)
-    }
+    drawFilletPath(roadDash, ROAD_DRAW_POINTS, ROAD_CORNER_RADIUS)
     roadDash.stroke({ width: 4, color: COLOR.roadDash })
     this.roadLayer.addChild(roadDash)
 
