@@ -1,6 +1,6 @@
-# Sistema de Armas + Skill Tree (nível 1-20)
+# Sistema de Armas + Skill Tree (nível 1-20, extensível ao infinito)
 
-> Spec de design, aprovada via brainstorming em 18/07/2026. Complementa `docs/design/` (a criar futuramente com o GDD completo) — este arquivo cobre especificamente combate, progressão e a tela de visualização da árvore.
+> Spec de design, aprovada via brainstorming em 18/07/2026 (revisão: suporte a níveis futuros + modo infinito/roguelite, mesma data). Complementa `docs/design/` (a criar futuramente com o GDD completo) — este arquivo cobre especificamente combate, progressão e a tela de visualização da árvore.
 
 ## Contexto
 
@@ -163,11 +163,60 @@ flowchart TD
     FORK3PM -->|Suporte| A12["Invocador"]
 
     A1 & A2 & A3 & A4 & A5 & A6 & A7 & A8 & A9 & A10 & A11 & A12 --> CAP["Nv 20 — CAPSTONE (habilidade única do arquétipo, reskin por deus)"]
+    CAP --> INF["Nv 21+ — MODO INFINITO (draft de pool misto, roguelite)"]
 ```
 
 ---
 
-## 6. Impacto no código existente (o que precisa mudar)
+## 6. Extensibilidade e modo infinito (nível 21+)
+
+Requisito: dar pra adicionar mais níveis curados no futuro **sem reescrever o motor**, e permitir que uma run continue **indefinidamente** depois do capstone (nível 20) — nesse ponto o jogo vira roguelite de verdade, misturando pedaços de arquétipos diferentes (não só escalando números do arquétipo escolhido).
+
+### Princípio: conteúdo é dado, não código
+
+Toda skill (de qualquer nível, 1 a 20 e além) é um registro numa **tabela de nós** (`SkillNode[]`, em TS/JSON — não hardcoded em componente nenhum). Adicionar/editar skill = editar a tabela, nunca a lógica de `GamePage.vue`/`SkillCard.vue`/`combat.ts`.
+
+```ts
+interface SkillNode {
+  id: string
+  archetypeId: ArquetipoId | 'any'   // 'any' = nó genérico (ex: bônus de tier 1), disponível fora do draft misto também
+  tier: 1 | 2 | 3 | 4
+  axes: { damage?: 'fisico' | 'magico'; range?: 'melee' | 'projetil'; role?: 'ofensivo' | 'defensivo' | 'suporte' }
+  name: string
+  description: string
+  effect: EffectSpec        // tipo + magnitude + fórmula de escala (não texto solto — precisa ser aplicável em código)
+  rarity: 'comum' | 'raro' | 'epico'   // usado só no draft do modo infinito, pra pesar sorteio
+}
+```
+
+### Definição de nível é separada do conteúdo
+
+```ts
+interface LevelDef {
+  level: number
+  kind: 'fixed' | 'god-select' | 'cards' | 'fork-range' | 'fork-damage' | 'fork-role' | 'capstone' | 'infinite-draft'
+  cardCount?: number
+}
+```
+
+- **Níveis 1-20**: uma tabela `LEVEL_DEFS` explícita (o que já foi desenhado nas seções 1-5). Adicionar um nível curado novo entre eles — ou estender pra, digamos, nível 25 com conteúdo escrito à mão — é só **acrescentar uma linha na tabela**, sem mexer no motor de jogo.
+- **Nível 21 em diante**: se `level` não existir em `LEVEL_DEFS`, cai num **fallback automático** — `kind: 'infinite-draft'`. Isso significa que o modo infinito **já funciona sem nenhum conteúdo extra precisar ser escrito** — ele reaproveita a tabela de `SkillNode` inteira que já existe dos níveis 1-20.
+
+### Como funciona o draft infinito (roguelite)
+
+A partir do nível 21, cada level-up sorteia 2-3 `SkillNode` **de qualquer arquétipo** (não só o escolhido no fork do nível 15) — é aqui que vira roguelite de verdade, misturando pedaços de builds diferentes:
+
+- **Peso do sorteio:** nós do arquétipo atual do jogador (e da afinidade do deus) têm peso maior — ainda parece "a build dele", só que com chance real de pegar algo de outro arquétipo pra hibridizar.
+- **Repetição empilha:** pegar o mesmo nó de novo aumenta a magnitude dele (mesmo padrão de "upar a mesma carta" usado em jogos do gênero) — evita precisar de conteúdo infinito de verdade, já que o mesmo pool de nós dos 12 arquétipos serve pra sempre, só ficando mais forte.
+- **Raridade** (`comum`/`raro`/`epico` no `SkillNode`) controla a frequência de sorteio, não o poder base — dá pra ter picos de sorte sem precisar desenhar tiers 5, 6, 7... à mão.
+
+### Não incluso nesta spec (fica pra quando formos balancear de verdade)
+
+Fórmula exata de escala por repetição, curva de dificuldade das ondas em paralelo ao nível (pra acompanhar um jogador em modo infinito ficando cada vez mais forte), e limite prático de UI pra mostrar "nível 47" sem quebrar o HUD — são ajustes de balanceamento/polish, não mudam a arquitetura acima.
+
+---
+
+## 7. Impacto no código existente (o que precisa mudar)
 
 Isso NÃO é o plano de implementação (isso vem depois, via `EnterPlanMode`) — é só o mapeamento do que já existe e vai precisar de rework, pra não perder de vista na hora de planejar:
 
@@ -176,6 +225,10 @@ Isso NÃO é o plano de implementação (isso vem depois, via `EnterPlanMode`) �
 - **`useGameStore.ts`** — precisa de campos novos: `weaponRange` ('melee'|'projetil'), `damageType` ('fisico'|'magico'), `role` ('ofensivo'|'defensivo'|'suporte'), array de skills escolhidas (pra aplicar efeitos), e o cálculo de afinidade (alinhado vs divergente) uma vez os 3 forks estiverem resolvidos.
 - **`SkillCard.vue`** — já suporta múltiplos cards via `v-for` (hoje só usa 1 hardcoded) — precisa receber a lista de cards dinâmica por nível/tier em vez do card fixo "Fúria de Ares".
 - **`ClassSelect.vue`** — o padrão visual (cards grandes, escolha estrutural) é reaproveitado pros 3 forks (níveis 6/10/15) e pro capstone (nível 20), não só pro nível 2.
-- **Sistema de XP/nível** — hoje só distingue "nível 2 = classselect, resto = levelup" (`addXp` em `useGameStore.ts`). Precisa reconhecer os 3 forks (6/10/15) como um terceiro tipo de tela, e o capstone (20) como um quarto.
-- **Novo: `SkillTreeMap.vue`** — tela de visualização da árvore completa (seção 5), acessível do menu e em pausa durante o jogo.
-- **Conteúdo:** os 12 arquétipos × 4 tiers de cards (~11 cards não-fork por arquétipo) + 12 capstones × 5 reskins de nome/flavor = volume de conteúdo relevante, melhor tratado como tabela de dados (JSON/TS) alimentando os componentes existentes, não hardcoded por arquétipo.
+- **Sistema de XP/nível** — hoje só distingue "nível 2 = classselect, resto = levelup" (`addXp` em `useGameStore.ts`). Precisa virar um resolvedor de `LevelDef` (seção 6) — consulta `LEVEL_DEFS[level]`, e se não existir, cai no fallback `infinite-draft` — em vez de `if/else` de número de nível hardcoded.
+- **Novo: `game/skillTree.ts`** (ou `.json`) — a tabela `SkillNode[]` + `LEVEL_DEFS[]` da seção 6. É a fonte única de conteúdo; todo componente de skill lê daqui, nada fica hardcoded no `.vue`.
+- **Novo: `game/skillDraft.ts`** — função de sorteio ponderado (usada tanto pros cards normais dos tiers 1-4 quanto pro draft misto do modo infinito), já que os dois reaproveitam a mesma lógica de "sortear N nós do pool, respeitando peso/raridade".
+- **`SkillCard.vue`** — já suporta múltiplos cards via `v-for` (hoje só usa 1 hardcoded) — precisa receber a lista de cards dinâmica (gerada por `skillDraft.ts` a partir de `LEVEL_DEFS`/`SkillNode[]`) em vez do card fixo "Fúria de Ares".
+- **`ClassSelect.vue`** — o padrão visual (cards grandes, escolha estrutural) é reaproveitado pros 3 forks (níveis 6/10/15) e pro capstone (nível 20), não só pro nível 2.
+- **Novo: `SkillTreeMap.vue`** — tela de visualização da árvore completa (seção 5), acessível do menu e em pausa durante o jogo. Lê a mesma tabela `SkillNode[]`/`LEVEL_DEFS[]* — não duplica dado.
+- **Conteúdo:** os 12 arquétipos × 4 tiers de cards (~11 cards não-fork por arquétipo) + 12 capstones × 5 reskins de nome/flavor = volume de conteúdo relevante, já nasce como tabela de dados (seção 6), não hardcoded por arquétipo — e é exatamente essa tabela que o modo infinito reaproveita sem precisar de conteúdo extra.
