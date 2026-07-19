@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { useTunablesStore } from '@/stores/useTunablesStore'
+import { sideOfRoad } from '@/game/mapDef'
 import { draftCards, type BuildState } from '@/game/skillDraft'
 import {
   AFFINITY,
@@ -21,6 +22,7 @@ export type RunState =
   | 'levelup'
   | 'classselect'
   | 'zoneselect'
+  | 'placement'
   | 'fork-range'
   | 'fork-damage'
   | 'fork-role'
@@ -60,6 +62,7 @@ export const useGameStore = defineStore('game', () => {
   const chosenGodId = ref<string | null>(null)
   const archetype = ref<Archetype | null>(null)
   const zone = ref<Zone>('neutra')
+  const fixedPosition = ref<{ x: number; y: number } | null>(null)
   const stamina = ref<number>(100)
   const maxStamina = ref<number>(100)
   const enemiesKilled = ref<number>(0)
@@ -93,6 +96,7 @@ export const useGameStore = defineStore('game', () => {
     chosenGodId.value = null
     archetype.value = null
     zone.value = 'neutra'
+    fixedPosition.value = null
     stamina.value = maxStamina.value
     gameOverReason.value = null
     fireMode.value = 'auto'
@@ -178,11 +182,24 @@ export const useGameStore = defineStore('game', () => {
   const chooseGod = (godId: string, chosenArchetype: Archetype): void => {
     chosenGodId.value = godId
     archetype.value = chosenArchetype
-    runState.value = 'zoneselect'
+    if (chosenArchetype === 'nomade-entre-zonas') {
+      zone.value = 'norte'
+      runState.value = 'playing'
+    } else if (chosenArchetype === 'errante-na-zona') {
+      runState.value = 'zoneselect'
+    } else {
+      runState.value = 'placement'
+    }
   }
 
   const chooseZone = (chosenZone: Zone): void => {
     zone.value = chosenZone
+    runState.value = 'playing'
+  }
+
+  const chooseFixedPosition = (x: number, y: number): void => {
+    fixedPosition.value = { x, y }
+    zone.value = sideOfRoad(x, y)
     runState.value = 'playing'
   }
 
@@ -264,6 +281,7 @@ export const useGameStore = defineStore('game', () => {
     chosenGodId,
     archetype,
     zone,
+    fixedPosition,
     stamina,
     maxStamina,
     enemiesKilled,
@@ -288,6 +306,7 @@ export const useGameStore = defineStore('game', () => {
     addXp,
     chooseGod,
     chooseZone,
+    chooseFixedPosition,
     chooseFork,
     chooseSkillCard,
     chooseCapstone,

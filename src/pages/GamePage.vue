@@ -1,11 +1,17 @@
 <template>
-  <div class="game-page">
+  <div class="game-page" :class="{ 'game-page--aiming': gameStore.runState === 'playing' }">
     <div ref="hostEl" class="game-canvas-host" />
 
     <HUD v-if="gameStore.runState === 'playing'" />
     <SkillCard v-if="gameStore.runState === 'levelup'" @close="onSkillClosed" />
     <ClassSelect v-if="gameStore.runState === 'classselect'" @close="onClassClosed" />
     <ZoneSelect v-if="gameStore.runState === 'zoneselect'" @close="onZoneClosed" />
+    <PlacementSelect
+      v-if="gameStore.runState === 'placement'"
+      :has-preview="placementPreview !== null"
+      :valid="placementValid"
+      @confirm="onPlacementConfirmed"
+    />
     <ForkSelect
       v-if="gameStore.runState === 'fork-range'"
       eyebrow="NÍVEL 6 · UM CAMINHO SE ABRE"
@@ -42,19 +48,20 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-import type { Ticker } from 'pixi.js'
+import { Graphics, type Ticker } from 'pixi.js'
 import { useGameStore } from '@/stores/useGameStore'
 import type { ForkAxis } from '@/stores/useGameStore'
 import { useTunablesStore } from '@/stores/useTunablesStore'
 import { MapScene } from '@/game/pixi/scene'
-import { PlayerAvatar, type MovementConstraint } from '@/game/pixi/player'
+import { PlayerAvatar, PLAYER_RADIUS, type MovementConstraint } from '@/game/pixi/player'
 import { EnemyPool, type Enemy } from '@/game/pixi/enemy'
-import { CombatTicker, type CombatContext } from '@/game/pixi/combat'
+import { CombatTicker, resolveAttackTarget, type CombatContext } from '@/game/pixi/combat'
 import { CombatFxLayer } from '@/game/pixi/combatFx'
 import { WaveSpawner } from '@/game/pixi/waveSpawner'
-import { PLAYER_START, WORLD_H, WORLD_W } from '@/game/mapDef'
+import { COLOR, PLAYER_START, ROAD_WIDTH, WORLD_H, WORLD_W, roadYAtX } from '@/game/mapDef'
 import { CAPSTONES, SKILL_NODES, capstoneNameFor, type DamageType, type Role, type WeaponRange } from '@/game/skillTree'
 import ForkSelect, { type ForkOption } from '@/components/ForkSelect.vue'
+import PlacementSelect from '@/components/PlacementSelect.vue'
 import {
   activateUltimateIfReady,
   auraShieldPercent,
@@ -83,6 +90,8 @@ const IMMOBILE_DAMAGE_MULTIPLIER = 1.5
 const XP_PER_KILL = 4
 const SUMMON_TARGET_RANGE = 400
 const ULTIMATE_AOE_RADIUS = 150
+const PLACEMENT_MARGIN = ROAD_WIDTH / 2 + PLAYER_RADIUS
+const PLACEMENT_MARKER_RADIUS = 24
 
 const RANGE_OPTIONS: ForkOption[] = [
   { value: 'melee', label: 'Melee', description: 'Combate corpo a corpo, alcance curto.' },
@@ -103,6 +112,8 @@ const tunables = useTunablesStore()
 const hostEl = ref<HTMLElement | null>(null)
 const showSkillMap = ref(false)
 const showAdminPanel = ref(false)
+const placementPreview = ref<{ x: number; y: number } | null>(null)
+const placementValid = ref(false)
 
 const capstoneOptions = computed<ForkOption[]>(() => {
   if (!gameStore.archetypeId) return []
@@ -123,6 +134,7 @@ let combatTicker: CombatTicker | null = null
 let combatFx: CombatFxLayer | null = null
 let waveSpawner: WaveSpawner | null = null
 let mouseWorldPos: { x: number; y: number } | null = null
+let placementMarker: Graphics | null = null
 let effectsState: PlayerEffectsState = createEffectsState()
 
 const pressedKeys = new Set<string>()
@@ -169,18 +181,54 @@ function onWindowBlur(): void {
   pressedKeys.clear()
 }
 
-function onPointerMove(event: PointerEvent): void {
-  if (!scene || !hostEl.value) return
+function toWorldCoords(clientX: number, clientY: number): { x: number; y: number } | null {
+  if (!scene || !hostEl.value) return null
   const rect = hostEl.value.getBoundingClientRect()
-  const screenX = event.clientX - rect.left
-  const screenY = event.clientY - rect.top
+  const screenX = clientX - rect.left
+  const screenY = clientY - rect.top
   const scaleX = scene.world.scale.x
   const scaleY = scene.world.scale.y
-  if (!scaleX || !scaleY) return
-  mouseWorldPos = {
+  if (!scaleX || !scaleY) return null
+  return {
     x: (screenX - scene.world.position.x) / scaleX,
     y: (screenY - scene.world.position.y) / scaleY,
   }
+}
+
+function onPointerMove(event: PointerEvent): void {
+  const world = toWorldCoords(event.clientX, event.clientY)
+  if (world) mouseWorldPos = world
+}
+
+function isValidPlacement(x: number, y: number): boolean {
+  if (x < PLAYER_RADIUS || x > WORLD_W - PLAYER_RADIUS || y < PLAYER_RADIUS || y > WORLD_H - PLAYER_RADIUS) {
+    return false
+  }
+  return Math.abs(y - roadYAtX(x)) > PLACEMENT_MARGIN
+}
+
+function paintPlacementMarker(x: number, y: number, valid: boolean): void {
+  if (!placementMarker) return
+  placementMarker.clear()
+  placementMarker
+    .circle(0, 0, PLACEMENT_MARKER_RADIUS)
+    .stroke({ width: 3, color: valid ? COLOR.gold : COLOR.danger })
+  placementMarker.position.set(x, y)
+  placementMarker.visible = true
+}
+
+function onPointerDownOnCanvas(event: PointerEvent): void {
+  if (gameStore.runState !== 'placement') return
+  const world = toWorldCoords(event.clientX, event.clientY)
+  if (!world) return
+  placementPreview.value = world
+  placementValid.value = isValidPlacement(world.x, world.y)
+  paintPlacementMarker(world.x, world.y, placementValid.value)
+}
+
+function onPlacementConfirmed(): void {
+  if (!placementPreview.value || !placementValid.value) return
+  gameStore.chooseFixedPosition(placementPreview.value.x, placementPreview.value.y)
 }
 
 function onWindowResize(): void {
@@ -396,6 +444,13 @@ function onTick(deltaMs: number): void {
   combatTicker.update(scaledDeltaMs, ctx, handleHit, effectsPierceExtraTargets(effectsState), () => resetCombo(effectsState))
   player.setRange(ctx.range)
 
+  const aimTarget = resolveAttackTarget(ctx)
+  if (aimTarget) {
+    player.setAimDirection(aimTarget.x - player.x, aimTarget.y - player.y)
+  } else {
+    player.setAimDirection(player.facing.x, player.facing.y)
+  }
+
   if (isMelee && !nearestEnemyWithin(range)) {
     const dash = tryDash(effectsState)
     if (dash) {
@@ -446,8 +501,19 @@ watch(
     if (prev === 'gameover' && next === 'playing') {
       resetGameplayState()
     }
-    if (next === 'zoneselect') {
+    if (next === 'zoneselect' || next === 'placement') {
       scene?.follow(WORLD_W / 2, WORLD_H / 2)
+    }
+    if (next === 'placement') {
+      placementPreview.value = null
+      placementValid.value = false
+      if (placementMarker) placementMarker.visible = false
+    }
+    if (prev === 'placement' && next === 'playing' && gameStore.fixedPosition && player) {
+      player.x = gameStore.fixedPosition.x
+      player.y = gameStore.fixedPosition.y
+      player.root.position.set(player.x, player.y)
+      if (placementMarker) placementMarker.visible = false
     }
   },
 )
@@ -474,6 +540,9 @@ onMounted(async () => {
   combatFx = new CombatFxLayer()
   scene.addEntity(combatFx.container)
   waveSpawner = new WaveSpawner()
+  placementMarker = new Graphics()
+  placementMarker.visible = false
+  scene.addEntity(placementMarker)
 
   scene.fitToViewport()
   scene.follow(player.x, player.y)
@@ -487,6 +556,7 @@ onMounted(async () => {
   window.addEventListener('blur', onWindowBlur)
   window.addEventListener('resize', onWindowResize)
   hostEl.value.addEventListener('pointermove', onPointerMove)
+  hostEl.value.addEventListener('pointerdown', onPointerDownOnCanvas)
 
   if (gameStore.runState === 'menu') {
     gameStore.startRun()
@@ -499,6 +569,7 @@ onUnmounted(() => {
   window.removeEventListener('blur', onWindowBlur)
   window.removeEventListener('resize', onWindowResize)
   hostEl.value?.removeEventListener('pointermove', onPointerMove)
+  hostEl.value?.removeEventListener('pointerdown', onPointerDownOnCanvas)
   player?.destroy()
   scene?.destroy()
   scene = null
@@ -507,6 +578,7 @@ onUnmounted(() => {
   combatTicker = null
   combatFx = null
   waveSpawner = null
+  placementMarker = null
 })
 </script>
 
@@ -522,5 +594,11 @@ onUnmounted(() => {
 .game-canvas-host {
   position: absolute;
   inset: 0;
+}
+
+.game-page--aiming {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Ccircle cx='12' cy='12' r='9' fill='none' stroke='%23c9a227' stroke-width='2'/%3E%3Ccircle cx='12' cy='12' r='1.5' fill='%23c9a227'/%3E%3Cline x1='12' y1='1' x2='12' y2='5' stroke='%23c9a227' stroke-width='2'/%3E%3Cline x1='12' y1='19' x2='12' y2='23' stroke='%23c9a227' stroke-width='2'/%3E%3Cline x1='1' y1='12' x2='5' y2='12' stroke='%23c9a227' stroke-width='2'/%3E%3Cline x1='19' y1='12' x2='23' y2='12' stroke='%23c9a227' stroke-width='2'/%3E%3C/svg%3E")
+    12 12,
+    crosshair;
 }
 </style>
