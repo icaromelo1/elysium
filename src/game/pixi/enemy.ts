@@ -1,35 +1,80 @@
-import { Graphics } from 'pixi.js'
-import { ENEMY_COLORS, WAYPOINTS } from '../mapDef'
+import { Container, Graphics } from 'pixi.js'
+import { COLOR, ENEMY_COLORS, WAYPOINTS } from '../mapDef'
 
 const ENEMY_RADIUS = 20
 const WAYPOINT_ARRIVAL_DISTANCE = 4
+const HP_BAR_WIDTH = 36
+const HP_BAR_HEIGHT = 5
+const HP_BAR_OFFSET_Y = -ENEMY_RADIUS - 12
+const FLASH_DURATION_MS = 150
 
 export interface Enemy {
-  root: Graphics
+  root: Container
+  body: Graphics
+  hpBarBg: Graphics
+  hpBarFill: Graphics
+  flashOverlay: Graphics
   hp: number
   maxHp: number
   waypointIndex: number
   x: number
   y: number
   alive: boolean
+  flashElapsedMs: number
 }
 
 const createEnemy = (): Enemy => {
-  const root = new Graphics()
+  const root = new Container()
+
+  const hpBarBg = new Graphics()
+  hpBarBg.rect(-HP_BAR_WIDTH / 2, HP_BAR_OFFSET_Y, HP_BAR_WIDTH, HP_BAR_HEIGHT).fill({ color: COLOR.roadFill })
+  hpBarBg.visible = false
+  root.addChild(hpBarBg)
+
+  const hpBarFill = new Graphics()
+  hpBarFill.visible = false
+  root.addChild(hpBarFill)
+
+  const body = new Graphics()
+  root.addChild(body)
+
+  const flashOverlay = new Graphics()
+  flashOverlay.circle(0, 0, ENEMY_RADIUS).fill({ color: COLOR.ink })
+  flashOverlay.alpha = 0
+  root.addChild(flashOverlay)
+
   return {
     root,
+    body,
+    hpBarBg,
+    hpBarFill,
+    flashOverlay,
     hp: 0,
     maxHp: 0,
     waypointIndex: 0,
     x: WAYPOINTS[0]?.x ?? 0,
     y: WAYPOINTS[0]?.y ?? 0,
     alive: false,
+    flashElapsedMs: 0,
   }
 }
 
 const paintEnemy = (enemy: Enemy, color: number): void => {
-  enemy.root.clear()
-  enemy.root.circle(0, 0, ENEMY_RADIUS).stroke({ width: 3, color })
+  enemy.body.clear()
+  enemy.body.circle(0, 0, ENEMY_RADIUS).stroke({ width: 3, color })
+}
+
+const paintHpBar = (enemy: Enemy): void => {
+  const ratio = enemy.maxHp > 0 ? Math.max(0, enemy.hp / enemy.maxHp) : 0
+  const visible = ratio < 1
+  enemy.hpBarBg.visible = visible
+  enemy.hpBarFill.visible = visible
+  enemy.hpBarFill.clear()
+  if (visible) {
+    enemy.hpBarFill
+      .rect(-HP_BAR_WIDTH / 2, HP_BAR_OFFSET_Y, HP_BAR_WIDTH * ratio, HP_BAR_HEIGHT)
+      .fill({ color: COLOR.danger })
+  }
 }
 
 export class EnemyPool {
@@ -46,10 +91,13 @@ export class EnemyPool {
     enemy.x = start?.x ?? 0
     enemy.y = start?.y ?? 0
     enemy.alive = true
+    enemy.flashElapsedMs = 0
+    enemy.flashOverlay.alpha = 0
     enemy.root.position.set(enemy.x, enemy.y)
     enemy.root.visible = true
     const color = ENEMY_COLORS[this.spawnCount % ENEMY_COLORS.length] ?? ENEMY_COLORS[0] ?? 0xffffff
     paintEnemy(enemy, color)
+    paintHpBar(enemy)
     this.spawnCount += 1
     this.active.push(enemy)
     return enemy
@@ -65,10 +113,22 @@ export class EnemyPool {
     this.available.push(enemy)
   }
 
+  applyDamage(enemy: Enemy, amount: number): void {
+    enemy.hp -= amount
+    paintHpBar(enemy)
+    enemy.flashElapsedMs = FLASH_DURATION_MS
+    enemy.flashOverlay.alpha = 1
+  }
+
   update(deltaMs: number, onLeak: (enemy: Enemy) => void, speed: number): void {
     const toDespawn: Enemy[] = []
 
     for (const enemy of this.active) {
+      if (enemy.flashElapsedMs > 0) {
+        enemy.flashElapsedMs = Math.max(0, enemy.flashElapsedMs - deltaMs)
+        enemy.flashOverlay.alpha = enemy.flashElapsedMs / FLASH_DURATION_MS
+      }
+
       const target = WAYPOINTS[enemy.waypointIndex]
       if (!target) {
         toDespawn.push(enemy)
