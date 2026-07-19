@@ -1,8 +1,8 @@
 import { Container, Graphics } from 'pixi.js'
-import { COLOR, NEUTRAL_ZONE, WORLD_H, WORLD_W, roadYAtX, sideOfRoad, type ZoneSide } from '../mapDef'
+import { COLOR, NEUTRAL_ZONE, ROAD_WIDTH, WORLD_H, WORLD_W, roadYAtX, sideOfRoad, type ZoneSide } from '../mapDef'
 
 const PLAYER_RADIUS = 32
-const ZONE_CLAMP_MARGIN = 24
+const ZONE_CLAMP_MARGIN = ROAD_WIDTH / 2 + PLAYER_RADIUS
 
 export type MovementConstraint =
   | { kind: 'neutral' }
@@ -13,16 +13,27 @@ export class PlayerAvatar {
   x: number
   y: number
   facing: { x: number; y: number }
+  private rangeRing: Graphics
+  private currentRange = 0
 
   constructor(startX: number, startY: number) {
     this.root = new Container()
     const body = new Graphics()
     body.circle(0, 0, PLAYER_RADIUS).fill({ color: COLOR.player })
     this.root.addChild(body)
+    this.rangeRing = new Graphics()
+    this.root.addChild(this.rangeRing)
     this.x = startX
     this.y = startY
     this.facing = { x: 0, y: 1 }
     this.root.position.set(this.x, this.y)
+  }
+
+  setRange(range: number): void {
+    if (range === this.currentRange) return
+    this.currentRange = range
+    this.rangeRing.clear()
+    this.rangeRing.circle(0, 0, range).stroke({ width: 2, color: COLOR.ink, alpha: 0.25 })
   }
 
   move(dx: number, dy: number, constraint: MovementConstraint): void {
