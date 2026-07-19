@@ -1,16 +1,16 @@
 <template>
-  <div class="skill-card-overlay">
-    <div class="skill-card-backdrop" />
-    <div class="skill-card-content">
-      <div class="skill-card-heading">
-        <div class="skill-card-level">NÍVEL {{ gameStore.level }} ALCANÇADO</div>
-        <div class="skill-card-title">Escolha uma Habilidade</div>
+  <div class="k-dialog-overlay">
+    <div class="k-dialog-backdrop" />
+    <div class="k-dialog-content">
+      <div class="k-dialog-heading">
+        <div class="k-dialog-eyebrow">NÍVEL {{ gameStore.level }} ALCANÇADO</div>
+        <div class="k-dialog-title">Escolha uma Habilidade</div>
       </div>
       <div class="skill-card-list">
         <div
           v-for="card in cards"
           :key="card.node.id"
-          class="skill-card"
+          class="skill-card k-dialog-fade-up"
           :style="{ borderColor: card.border }"
           @click="confirm(card.node.id)"
         >
@@ -35,8 +35,6 @@ import { useGameStore } from '@/stores/useGameStore'
 import type { SkillNode } from '@/game/skillTree'
 import type { EffectSpec } from '@/game/effects'
 
-const emit = defineEmits(['close'])
-
 const gameStore = useGameStore()
 
 const RARITY_COLOR: Record<SkillNode['rarity'], { accent: string; iconBg: string; border: string }> = {
@@ -51,6 +49,8 @@ const STAT_LABEL: Record<string, string> = {
   moveSpeed: 'velocidade',
   attackSpeed: 'velocidade de ataque',
   range: 'alcance',
+  maxStamina: 'stamina máxima',
+  staminaRegen: 'regeneração de stamina',
 }
 
 function formatEffect(effect: EffectSpec): string {
@@ -99,60 +99,10 @@ const cards = computed(() =>
 
 const confirm = (nodeId: string): void => {
   gameStore.chooseSkillCard(nodeId)
-  emit('close')
 }
 </script>
 
 <style scoped>
-.skill-card-overlay {
-  position: relative;
-  width: 100vw;
-  min-height: 100vh;
-  overflow: hidden;
-  font-family: 'Space Grotesk', sans-serif;
-  color: var(--ink);
-}
-
-.skill-card-backdrop {
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse at 50% 40%, var(--bg-soft) 0%, var(--bg) 75%);
-  filter: blur(3px);
-  opacity: 0.65;
-}
-
-.skill-card-content {
-  position: absolute;
-  inset: 0;
-  background: rgba(13, 11, 8, 0.74);
-  backdrop-filter: blur(1.5px);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: clamp(24px, 4vw, 44px);
-  box-sizing: border-box;
-  padding: 32px 16px;
-}
-
-.skill-card-heading {
-  text-align: center;
-}
-
-.skill-card-level {
-  font-family: 'Cinzel', serif;
-  font-size: clamp(12px, 1.4vw, 16px);
-  letter-spacing: 6px;
-  color: var(--gold);
-  margin-bottom: 14px;
-}
-
-.skill-card-title {
-  font-family: 'Cinzel', serif;
-  font-size: clamp(28px, 4vw, 44px);
-  font-weight: 700;
-}
-
 .skill-card-list {
   display: flex;
   flex-wrap: wrap;
@@ -174,7 +124,6 @@ const confirm = (nodeId: string): void => {
   gap: 18px;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55);
   box-sizing: border-box;
-  animation: floatUp 0.5s ease both;
   cursor: pointer;
 }
 
@@ -237,16 +186,5 @@ const confirm = (nodeId: string): void => {
 .skill-card-hint {
   font-size: 13px;
   color: var(--ink-faint);
-}
-
-@keyframes floatUp {
-  0% {
-    opacity: 0;
-    transform: translateY(24px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 </style>

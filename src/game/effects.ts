@@ -1,7 +1,7 @@
 export type UltimateGrant = 'aoe-melee' | 'aoe-ranged' | 'uninterruptible' | 'damage-boost' | 'lifesteal-boost'
 
 export type EffectSpec =
-  | { kind: 'stat-mod'; stat: 'damage' | 'maxHp' | 'moveSpeed' | 'attackSpeed' | 'range'; percent: number }
+  | { kind: 'stat-mod'; stat: 'damage' | 'maxHp' | 'moveSpeed' | 'attackSpeed' | 'range' | 'maxStamina' | 'staminaRegen'; percent: number }
   | { kind: 'on-hit-dot'; damagePercent: number; durationMs: number; tickMs: number }
   | { kind: 'on-hit-stun'; durationMs: number; chancePercent: number }
   | { kind: 'on-hit-lifesteal'; percent: number }
@@ -42,7 +42,7 @@ export interface PlayerEffectsState {
   healNextTickMs: number
 }
 
-const STAT_MOD_STATS = ['damage', 'maxHp', 'moveSpeed', 'attackSpeed', 'range'] as const
+const STAT_MOD_STATS = ['damage', 'maxHp', 'moveSpeed', 'attackSpeed', 'range', 'maxStamina', 'staminaRegen'] as const
 type StatModStat = (typeof STAT_MOD_STATS)[number]
 
 const SUMMON_TICK_MS = 800

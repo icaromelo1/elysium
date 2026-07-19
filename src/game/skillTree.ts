@@ -104,6 +104,8 @@ const TIER1_NODES: SkillNode[] = [
   { id: 't1-velocidade', archetypeId: 'any', tier: 1, axes: {}, name: '+8% Velocidade de Movimento', description: 'Aumenta a velocidade de deslocamento.', effect: { kind: 'stat-mod', stat: 'moveSpeed', percent: 8 }, rarity: 'comum' },
   { id: 't1-vel-ataque', archetypeId: 'any', tier: 1, axes: {}, name: '+10% Velocidade de Ataque', description: 'Ataca com mais frequência.', effect: { kind: 'stat-mod', stat: 'attackSpeed', percent: 10 }, rarity: 'comum' },
   { id: 't1-alcance', archetypeId: 'any', tier: 1, axes: {}, name: '+8% Alcance', description: 'Aumenta o alcance de ataque.', effect: { kind: 'stat-mod', stat: 'range', percent: 8 }, rarity: 'comum' },
+  { id: 't1-stamina-max', archetypeId: 'any', tier: 1, axes: {}, name: '+15% Stamina Máxima', description: 'Aumenta a capacidade de stamina.', effect: { kind: 'stat-mod', stat: 'maxStamina', percent: 15 }, rarity: 'comum' },
+  { id: 't1-stamina-regen', archetypeId: 'any', tier: 1, axes: {}, name: '+20% Regeneração de Stamina', description: 'Recupera stamina mais rápido parado ou andando normal.', effect: { kind: 'stat-mod', stat: 'staminaRegen', percent: 20 }, rarity: 'comum' },
 ]
 
 // ---------------------------------------------------------------------------
