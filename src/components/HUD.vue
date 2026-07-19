@@ -10,7 +10,7 @@
       </div>
       <div class="hud__row hud__row--level">
         <span class="k-label hud__label">NÍVEL {{ level }}</span>
-        <span class="hud__value">{{ xpPercent }}%</span>
+        <span class="hud__value">{{ Math.round(xp) }}/{{ Math.round(xpToNext) }}</span>
       </div>
       <div class="hud__bar hud__bar--xp">
         <div class="hud__bar-fill" :style="{ width: `${xpPercent}%` }"></div>

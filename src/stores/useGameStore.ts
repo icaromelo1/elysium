@@ -53,7 +53,7 @@ export const useGameStore = defineStore('game', () => {
   const maxHp = ref<number>(100)
   const level = ref<number>(1)
   const xp = ref<number>(0)
-  const xpToNext = ref<number>(10)
+  const xpToNext = computed<number>(() => nextXpToNext(level.value, tunables.xpBase))
   const leaks = ref<number>(0)
   const leaksLimit = ref<number>(10)
   const fireMode = ref<FireMode>('auto')
@@ -87,7 +87,6 @@ export const useGameStore = defineStore('game', () => {
     hp.value = maxHp.value
     level.value = 1
     xp.value = 0
-    xpToNext.value = nextXpToNext(1, tunables.xpBase)
     leaks.value = 0
     enemiesKilled.value = 0
     survivalTimeMs.value = 0
@@ -170,7 +169,6 @@ export const useGameStore = defineStore('game', () => {
     while (xp.value >= xpToNext.value) {
       xp.value -= xpToNext.value
       level.value += 1
-      xpToNext.value = nextXpToNext(level.value, tunables.xpBase)
       if (runState.value === 'playing') {
         enterLevel()
       }

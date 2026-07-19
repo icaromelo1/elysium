@@ -61,6 +61,7 @@
 </template>
 
 <script setup lang="ts">
+import { useQuasar } from 'quasar'
 import { useGameStore } from '@/stores/useGameStore'
 import { useTunablesStore } from '@/stores/useTunablesStore'
 
@@ -68,6 +69,7 @@ const emit = defineEmits(['close'])
 
 const gameStore = useGameStore()
 const tunables = useTunablesStore()
+const $q = useQuasar()
 
 const playerFields = [
   { key: 'moveSpeed' as const, label: 'Velocidade base' },
@@ -98,12 +100,24 @@ const progressionFields = [
 ]
 
 const onReset = (): void => {
-  tunables.damagePerTick *= gameStore.liveStats.damageMultiplier
-  tunables.moveSpeed *= gameStore.liveStats.moveSpeedMultiplier
-  tunables.fireIntervalMs /= gameStore.liveStats.attackSpeedMultiplier
-  tunables.meleeRange *= gameStore.liveStats.rangeMultiplier
-  tunables.projectileRange *= gameStore.liveStats.rangeMultiplier
+  const { damageMultiplier, moveSpeedMultiplier, attackSpeedMultiplier, rangeMultiplier } = gameStore.liveStats
+  const nothingToBake =
+    gameStore.runState !== 'playing' ||
+    (damageMultiplier === 1 && moveSpeedMultiplier === 1 && attackSpeedMultiplier === 1 && rangeMultiplier === 1 && gameStore.maxHp === tunables.maxHp)
+
+  if (nothingToBake) {
+    $q.notify({ type: 'warning', message: 'Nada pra assar ainda — nenhum multiplicador ativo nessa run.' })
+    return
+  }
+
+  tunables.damagePerTick *= damageMultiplier
+  tunables.moveSpeed *= moveSpeedMultiplier
+  tunables.fireIntervalMs /= attackSpeedMultiplier
+  tunables.meleeRange *= rangeMultiplier
+  tunables.projectileRange *= rangeMultiplier
   tunables.maxHp = gameStore.maxHp
+
+  $q.notify({ type: 'positive', message: 'Upgrades assados nos campos base.' })
 }
 </script>
 
