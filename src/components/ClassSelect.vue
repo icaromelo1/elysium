@@ -1,16 +1,16 @@
 <template>
-  <div class="class-select-overlay">
-    <div class="class-select-backdrop" />
-    <div class="class-select-content">
-      <div class="class-select-heading">
-        <div class="class-select-level">NÍVEL 2 · UM CAMINHO SE ABRE</div>
-        <div class="class-select-title">Escolha seu Deus</div>
+  <div class="k-dialog-overlay">
+    <div class="k-dialog-backdrop" />
+    <div class="k-dialog-content k-dialog-content--scroll">
+      <div class="k-dialog-heading">
+        <div class="k-dialog-eyebrow">NÍVEL 2 · UM CAMINHO SE ABRE</div>
+        <div class="k-dialog-title">Escolha seu Deus</div>
       </div>
       <div class="class-select-list">
         <div
           v-for="(god, index) in gods"
           :key="god.id"
-          class="class-select-card"
+          class="class-select-card k-dialog-fade-up"
           :style="{ borderColor: `${god.colorCss}55`, animationDelay: `${index * 100}ms` }"
         >
           <div
@@ -45,69 +45,16 @@
 import { useGameStore } from '@/stores/useGameStore'
 import { GODS, type GodDef } from '@/game/gods'
 
-const emit = defineEmits(['close'])
-
 const gameStore = useGameStore()
 
 const gods = GODS
 
 const choose = (god: GodDef): void => {
   gameStore.chooseGod(god.id, god.archetype)
-  emit('close')
 }
 </script>
 
 <style scoped>
-.class-select-overlay {
-  position: relative;
-  width: 100vw;
-  min-height: 100vh;
-  overflow: hidden;
-  font-family: 'Space Grotesk', sans-serif;
-  color: var(--ink);
-}
-
-.class-select-backdrop {
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse at 50% 40%, var(--bg-soft) 0%, var(--bg) 75%);
-  filter: blur(3px);
-  opacity: 0.65;
-}
-
-.class-select-content {
-  position: absolute;
-  inset: 0;
-  background: rgba(13, 11, 8, 0.74);
-  backdrop-filter: blur(1.5px);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-  gap: clamp(20px, 3.5vw, 36px);
-  box-sizing: border-box;
-  padding: 60px 16px 40px;
-  overflow-y: auto;
-}
-
-.class-select-heading {
-  text-align: center;
-}
-
-.class-select-level {
-  font-family: 'Cinzel', serif;
-  font-size: clamp(12px, 1.4vw, 16px);
-  letter-spacing: 6px;
-  color: var(--gold);
-  margin-bottom: 14px;
-}
-
-.class-select-title {
-  font-family: 'Cinzel', serif;
-  font-size: clamp(28px, 4vw, 44px);
-  font-weight: 700;
-}
-
 .class-select-list {
   display: flex;
   flex-wrap: wrap;
@@ -129,7 +76,6 @@ const choose = (god: GodDef): void => {
   gap: 12px;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55);
   box-sizing: border-box;
-  animation: floatUp 0.5s ease both;
 }
 
 .class-select-icon {
@@ -182,16 +128,5 @@ const choose = (god: GodDef): void => {
   font-size: 14px;
   letter-spacing: 1px;
   cursor: pointer;
-}
-
-@keyframes floatUp {
-  0% {
-    opacity: 0;
-    transform: translateY(24px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 </style>

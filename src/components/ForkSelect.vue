@@ -1,16 +1,16 @@
 <template>
-  <div class="fork-select-overlay">
-    <div class="fork-select-backdrop" />
-    <div class="fork-select-content">
-      <div class="fork-select-heading">
-        <div class="fork-select-level">{{ eyebrow }}</div>
-        <div class="fork-select-title">{{ title }}</div>
+  <div class="k-dialog-overlay">
+    <div class="k-dialog-backdrop" />
+    <div class="k-dialog-content">
+      <div class="k-dialog-heading">
+        <div class="k-dialog-eyebrow">{{ eyebrow }}</div>
+        <div class="k-dialog-title">{{ title }}</div>
       </div>
       <div class="fork-select-list">
         <div
           v-for="(option, index) in options"
           :key="option.value"
-          class="fork-select-card"
+          class="fork-select-card k-dialog-fade-up"
           :style="{ animationDelay: `${index * 100}ms` }"
           @click="emit('choose', option.value)"
         >
@@ -35,55 +35,6 @@ const emit = defineEmits(['choose'])
 </script>
 
 <style scoped>
-.fork-select-overlay {
-  position: relative;
-  width: 100vw;
-  min-height: 100vh;
-  overflow: hidden;
-  font-family: 'Space Grotesk', sans-serif;
-  color: var(--ink);
-}
-
-.fork-select-backdrop {
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse at 50% 40%, var(--bg-soft) 0%, var(--bg) 75%);
-  filter: blur(3px);
-  opacity: 0.65;
-}
-
-.fork-select-content {
-  position: absolute;
-  inset: 0;
-  background: rgba(13, 11, 8, 0.74);
-  backdrop-filter: blur(1.5px);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: clamp(24px, 4vw, 44px);
-  box-sizing: border-box;
-  padding: 32px 16px;
-}
-
-.fork-select-heading {
-  text-align: center;
-}
-
-.fork-select-level {
-  font-family: 'Cinzel', serif;
-  font-size: clamp(12px, 1.4vw, 16px);
-  letter-spacing: 6px;
-  color: var(--gold);
-  margin-bottom: 14px;
-}
-
-.fork-select-title {
-  font-family: 'Cinzel', serif;
-  font-size: clamp(28px, 4vw, 44px);
-  font-weight: 700;
-}
-
 .fork-select-list {
   display: flex;
   flex-wrap: wrap;
@@ -105,7 +56,6 @@ const emit = defineEmits(['choose'])
   gap: 16px;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55);
   box-sizing: border-box;
-  animation: floatUp 0.5s ease both;
   cursor: pointer;
 }
 
@@ -133,16 +83,5 @@ const emit = defineEmits(['choose'])
   font-weight: 700;
   font-size: 14px;
   letter-spacing: 1px;
-}
-
-@keyframes floatUp {
-  0% {
-    opacity: 0;
-    transform: translateY(24px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 </style>

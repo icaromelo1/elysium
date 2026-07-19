@@ -1,9 +1,9 @@
 <template>
-  <div class="placement-select-overlay">
-    <div class="placement-select-dim" />
-    <div class="placement-select-heading">
-      <div class="placement-select-level">NÍVEL 2 · {{ godName }}</div>
-      <div class="placement-select-title">Escolha onde plantar sua torre</div>
+  <div class="k-map-dialog-overlay placement-select-passthrough">
+    <div class="k-map-dialog-dim" />
+    <div class="k-map-dialog-heading">
+      <div class="k-map-dialog-eyebrow">NÍVEL 2 · {{ godName }}</div>
+      <div class="k-map-dialog-title">Escolha onde plantar sua torre</div>
       <div class="placement-select-hint">clique em qualquer ponto fora da estrada</div>
     </div>
     <div
@@ -31,43 +31,8 @@ const godName = computed(() => GODS.find((god) => god.id === gameStore.chosenGod
 </script>
 
 <style scoped>
-.placement-select-overlay {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  font-family: 'Space Grotesk', sans-serif;
-  color: var(--ink);
+.placement-select-passthrough {
   pointer-events: none;
-}
-
-.placement-select-dim {
-  position: absolute;
-  inset: 0;
-  background: rgba(13, 11, 8, 0.2);
-  pointer-events: none;
-}
-
-.placement-select-heading {
-  position: absolute;
-  top: clamp(20px, 4vh, 48px);
-  left: 50%;
-  transform: translateX(-50%);
-  text-align: center;
-  pointer-events: none;
-}
-
-.placement-select-level {
-  font-family: 'Cinzel', serif;
-  font-size: clamp(11px, 1.2vw, 14px);
-  letter-spacing: 5px;
-  color: var(--gold);
-  margin-bottom: 10px;
-}
-
-.placement-select-title {
-  font-family: 'Cinzel', serif;
-  font-size: clamp(24px, 3.6vw, 38px);
-  font-weight: 700;
 }
 
 .placement-select-hint {

@@ -74,3 +74,119 @@ body {
   border: 1px solid var(--border-faint);
   cursor: pointer;
 }
+
+/* Diálogos full-screen com cards (ClassSelect, SkillCard, ForkSelect) */
+
+.k-dialog-overlay {
+  position: relative;
+  width: 100vw;
+  min-height: 100vh;
+  overflow: hidden;
+  font-family: 'Space Grotesk', sans-serif;
+  color: var(--ink);
+}
+
+.k-dialog-backdrop {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 40%, var(--bg-soft) 0%, var(--bg) 75%);
+  filter: blur(3px);
+  opacity: 0.65;
+}
+
+.k-dialog-content {
+  position: absolute;
+  inset: 0;
+  background: rgba(13, 11, 8, 0.74);
+  backdrop-filter: blur(1.5px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(24px, 4vw, 44px);
+  box-sizing: border-box;
+  padding: 32px 16px;
+}
+
+.k-dialog-content--scroll {
+  justify-content: flex-start;
+  padding: 60px 16px 40px;
+  overflow-y: auto;
+}
+
+.k-dialog-heading {
+  text-align: center;
+}
+
+.k-dialog-eyebrow {
+  font-family: 'Cinzel', serif;
+  font-size: clamp(12px, 1.4vw, 16px);
+  letter-spacing: 6px;
+  color: var(--gold);
+  margin-bottom: 14px;
+}
+
+.k-dialog-title {
+  font-family: 'Cinzel', serif;
+  font-size: clamp(28px, 4vw, 44px);
+  font-weight: 700;
+}
+
+.k-dialog-fade-up {
+  animation: k-dialog-float-up 0.5s ease both;
+}
+
+@keyframes k-dialog-float-up {
+  0% {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Diálogos sobrepostos ao mapa (ZoneSelect, PlacementSelect) */
+
+.k-map-dialog-overlay {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  font-family: 'Space Grotesk', sans-serif;
+  color: var(--ink);
+}
+
+.k-map-dialog-dim {
+  position: absolute;
+  inset: 0;
+  background: rgba(13, 11, 8, 0.2);
+  pointer-events: none;
+}
+
+.k-map-dialog-dim--heavy {
+  background: rgba(13, 11, 8, 0.34);
+}
+
+.k-map-dialog-heading {
+  position: absolute;
+  top: clamp(20px, 4vh, 48px);
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  pointer-events: none;
+}
+
+.k-map-dialog-eyebrow {
+  font-family: 'Cinzel', serif;
+  font-size: clamp(11px, 1.2vw, 14px);
+  letter-spacing: 5px;
+  color: var(--gold);
+  margin-bottom: 10px;
+}
+
+.k-map-dialog-title {
+  font-family: 'Cinzel', serif;
+  font-size: clamp(24px, 3.6vw, 38px);
+  font-weight: 700;
+}

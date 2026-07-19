@@ -1,15 +1,15 @@
 <template>
-  <div class="zone-select-overlay">
-    <div class="zone-select-dim" />
+  <div class="k-map-dialog-overlay">
+    <div class="k-map-dialog-dim k-map-dialog-dim--heavy" />
     <div class="zone-select-region zone-select-region--north" @click="choose('norte')">
       <span class="zone-select-label zone-select-label--north">NORTE</span>
     </div>
     <div class="zone-select-region zone-select-region--south" @click="choose('sul')">
       <span class="zone-select-label zone-select-label--south">SUL</span>
     </div>
-    <div class="zone-select-heading">
-      <div class="zone-select-level">NÍVEL 2 · {{ godName }}</div>
-      <div class="zone-select-title">Escolha sua Zona</div>
+    <div class="k-map-dialog-heading">
+      <div class="k-map-dialog-eyebrow">NÍVEL 2 · {{ godName }}</div>
+      <div class="k-map-dialog-title">Escolha sua Zona</div>
     </div>
   </div>
 </template>
@@ -20,34 +20,16 @@ import { useGameStore } from '@/stores/useGameStore'
 import type { Zone } from '@/stores/useGameStore'
 import { GODS } from '@/game/gods'
 
-const emit = defineEmits(['close'])
-
 const gameStore = useGameStore()
 
 const godName = computed(() => GODS.find((god) => god.id === gameStore.chosenGodId)?.name ?? '')
 
 const choose = (zone: Extract<Zone, 'norte' | 'sul'>): void => {
   gameStore.chooseZone(zone)
-  emit('close')
 }
 </script>
 
 <style scoped>
-.zone-select-overlay {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  font-family: 'Space Grotesk', sans-serif;
-  color: var(--ink);
-}
-
-.zone-select-dim {
-  position: absolute;
-  inset: 0;
-  background: rgba(13, 11, 8, 0.34);
-  pointer-events: none;
-}
-
 .zone-select-region {
   position: absolute;
   left: 0;
@@ -91,28 +73,5 @@ const choose = (zone: Extract<Zone, 'norte' | 'sul'>): void => {
 
 .zone-select-label--south {
   color: var(--player);
-}
-
-.zone-select-heading {
-  position: absolute;
-  top: clamp(20px, 4vh, 48px);
-  left: 50%;
-  transform: translateX(-50%);
-  text-align: center;
-  pointer-events: none;
-}
-
-.zone-select-level {
-  font-family: 'Cinzel', serif;
-  font-size: clamp(11px, 1.2vw, 14px);
-  letter-spacing: 5px;
-  color: var(--gold);
-  margin-bottom: 10px;
-}
-
-.zone-select-title {
-  font-family: 'Cinzel', serif;
-  font-size: clamp(24px, 3.6vw, 38px);
-  font-weight: 700;
 }
 </style>
