@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
+import { useTunablesStore } from '@/stores/useTunablesStore'
 import { draftCards, type BuildState } from '@/game/skillDraft'
 import {
   AFFINITY,
@@ -30,8 +31,6 @@ export type Zone = 'neutra' | 'norte' | 'sul'
 export type ForkAxis = 'range' | 'damage' | 'role'
 
 const FIRE_MODE_CYCLE: FireMode[] = ['auto', 'manual-mov', 'manual-mouse']
-const STAMINA_DRAIN_PER_SEC = 35
-const STAMINA_REGEN_PER_SEC = 20
 
 const FORK_RUN_STATE: Record<ForkAxis, RunState> = {
   range: 'fork-range',
@@ -39,9 +38,17 @@ const FORK_RUN_STATE: Record<ForkAxis, RunState> = {
   role: 'fork-role',
 }
 
-const nextXpToNext = (level: number): number => Math.round(10 * Math.pow(1.5, level - 1))
+const nextXpToNext = (level: number, xpBase: number): number => Math.round(xpBase * Math.pow(1.5, level - 1))
+
+export interface LiveStats {
+  damageMultiplier: number
+  moveSpeedMultiplier: number
+  attackSpeedMultiplier: number
+  rangeMultiplier: number
+}
 
 export const useGameStore = defineStore('game', () => {
+  const tunables = useTunablesStore()
   const hp = ref<number>(100)
   const maxHp = ref<number>(100)
   const level = ref<number>(1)
@@ -59,6 +66,8 @@ export const useGameStore = defineStore('game', () => {
   const survivalTimeMs = ref<number>(0)
   const runState = ref<RunState>('menu')
   const gameOverReason = ref<GameOverReason>(null)
+  const gameSpeed = ref<number>(1)
+  const liveStats = ref<LiveStats>({ damageMultiplier: 1, moveSpeedMultiplier: 1, attackSpeedMultiplier: 1, rangeMultiplier: 1 })
 
   const weaponRange = ref<WeaponRange | null>(null)
   const damageType = ref<DamageType | null>(null)
@@ -78,7 +87,7 @@ export const useGameStore = defineStore('game', () => {
     hp.value = maxHp.value
     level.value = 1
     xp.value = 0
-    xpToNext.value = nextXpToNext(1)
+    xpToNext.value = nextXpToNext(1, tunables.xpBase)
     leaks.value = 0
     enemiesKilled.value = 0
     survivalTimeMs.value = 0
@@ -88,6 +97,7 @@ export const useGameStore = defineStore('game', () => {
     stamina.value = maxStamina.value
     gameOverReason.value = null
     fireMode.value = 'auto'
+    gameSpeed.value = 1
     weaponRange.value = null
     damageType.value = null
     role.value = null
@@ -119,9 +129,14 @@ export const useGameStore = defineStore('game', () => {
     role: role.value,
     archetypeId: archetypeId.value,
     affinityArchetypeId: affinityArchetypeId.value,
+    chosenIds: chosenSkillIds.value,
   })
 
   const enterLevel = (): void => {
+    const healPercent = Math.min(tunables.healCapPercent, tunables.healBasePercent + level.value * tunables.healPerLevelPercent)
+    heal(maxHp.value * (healPercent / 100))
+    leaks.value = Math.max(0, leaks.value - (1 + Math.floor(level.value / 10)))
+
     const levelDef = levelDefFor(level.value)
     if (levelDef.kind === 'fixed') return
     if (levelDef.kind === 'god-select') {
@@ -155,7 +170,7 @@ export const useGameStore = defineStore('game', () => {
     while (xp.value >= xpToNext.value) {
       xp.value -= xpToNext.value
       level.value += 1
-      xpToNext.value = nextXpToNext(level.value)
+      xpToNext.value = nextXpToNext(level.value, tunables.xpBase)
       if (runState.value === 'playing') {
         enterLevel()
       }
@@ -201,11 +216,19 @@ export const useGameStore = defineStore('game', () => {
   const updateStamina = (deltaMs: number, wantsSprint: boolean): boolean => {
     const active = wantsSprint && stamina.value > 0
     if (active) {
-      stamina.value = Math.max(0, stamina.value - (STAMINA_DRAIN_PER_SEC * deltaMs) / 1000)
+      stamina.value = Math.max(0, stamina.value - (tunables.staminaDrainPerSec * deltaMs) / 1000)
     } else {
-      stamina.value = Math.min(maxStamina.value, stamina.value + (STAMINA_REGEN_PER_SEC * deltaMs) / 1000)
+      stamina.value = Math.min(maxStamina.value, stamina.value + (tunables.staminaRegenPerSec * deltaMs) / 1000)
     }
     return active
+  }
+
+  const setGameSpeed = (value: number): void => {
+    gameSpeed.value = Math.min(10, Math.max(1, value))
+  }
+
+  const setLiveStats = (stats: LiveStats): void => {
+    liveStats.value = stats
   }
 
   const acknowledgeSkill = (): void => {
@@ -249,6 +272,8 @@ export const useGameStore = defineStore('game', () => {
     survivalTimeMs,
     runState,
     gameOverReason,
+    gameSpeed,
+    liveStats,
     weaponRange,
     damageType,
     role,
@@ -269,6 +294,8 @@ export const useGameStore = defineStore('game', () => {
     chooseSkillCard,
     chooseCapstone,
     updateStamina,
+    setGameSpeed,
+    setLiveStats,
     acknowledgeSkill,
     registerKill,
     tickSurvivalTime,

@@ -47,6 +47,20 @@
         pressione <span class="hud__key">Q</span> pra trocar
       </div>
     </div>
+
+    <div class="hud__speed k-panel">
+      <span class="k-label hud__label">VELOCIDADE</span>
+      <input
+        type="range"
+        min="1"
+        max="10"
+        step="1"
+        :value="gameSpeed"
+        class="hud__speed-slider"
+        @input="onSpeedInput"
+      />
+      <span class="hud__speed-value">{{ gameSpeed }}×</span>
+    </div>
   </div>
 </template>
 
@@ -57,8 +71,13 @@ import { useGameStore } from '@/stores/useGameStore'
 import type { FireMode } from '@/stores/useGameStore'
 
 const gameStore = useGameStore()
-const { hp, maxHp, level, xp, xpToNext, leaks, leaksLimit, fireMode, stamina, maxStamina } = storeToRefs(gameStore)
-const { cycleFireMode } = gameStore
+const { hp, maxHp, level, xp, xpToNext, leaks, leaksLimit, fireMode, stamina, maxStamina, gameSpeed } =
+  storeToRefs(gameStore)
+const { cycleFireMode, setGameSpeed } = gameStore
+
+const onSpeedInput = (event: Event): void => {
+  setGameSpeed(Number((event.target as HTMLInputElement).value))
+}
 
 const hpPercent = computed(() => (hp.value / maxHp.value) * 100)
 
@@ -246,5 +265,30 @@ const fireModes: { value: FireMode; label: string }[] = [
   border: 1px solid rgba(255, 255, 255, 0.16);
   font-weight: 700;
   color: var(--ink);
+}
+
+.hud__speed {
+  position: absolute;
+  bottom: clamp(16px, 3vw, 40px);
+  right: clamp(14px, 2.5vw, 36px);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: clamp(10px, 1.4vw, 14px) clamp(14px, 1.8vw, 20px);
+  box-sizing: border-box;
+  pointer-events: auto;
+}
+
+.hud__speed-slider {
+  width: clamp(90px, 12vw, 140px);
+  accent-color: var(--gold);
+}
+
+.hud__speed-value {
+  font-family: 'SF Mono', monospace;
+  font-weight: 700;
+  color: var(--ink);
+  min-width: 26px;
+  text-align: right;
 }
 </style>
