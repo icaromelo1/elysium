@@ -22,6 +22,7 @@ export class MapScene {
   private terrainLayer: Container
   private roadLayer: Container
   private entityLayer: Container
+  private zoneMarker: Graphics
   private zoom = 1
   private panX = 0
   private panY = 0
@@ -34,6 +35,7 @@ export class MapScene {
     this.roadLayer = new Container()
     this.entityLayer = new Container()
     this.entityLayer.sortableChildren = true
+    this.zoneMarker = new Graphics()
   }
 
   async init(host: HTMLElement): Promise<void> {
@@ -97,11 +99,14 @@ export class MapScene {
       .fill({ color: COLOR.danger })
     this.roadLayer.addChild(leakMarker)
 
-    const zoneMarker = new Graphics()
-    zoneMarker
+    this.zoneMarker
       .circle(NEUTRAL_ZONE.x, NEUTRAL_ZONE.y, NEUTRAL_ZONE.radius)
       .stroke({ width: 2, color: COLOR.player, alpha: 0.35 })
-    this.terrainLayer.addChild(zoneMarker)
+    this.terrainLayer.addChild(this.zoneMarker)
+  }
+
+  setNeutralZoneVisible(visible: boolean): void {
+    this.zoneMarker.visible = visible
   }
 
   private zoomScale(): number {

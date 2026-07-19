@@ -58,6 +58,20 @@
         <div class="skill-map-node skill-map-node--capstone">Nv 20 · CAPSTONE (habilidade única, reskin por deus)</div>
         <div class="skill-map-node skill-map-node--infinite">Nv 21+ · MODO INFINITO (draft misto, roguelite)</div>
       </div>
+
+      <div v-if="gameStore.runState !== 'menu' && chosenSkills.length > 0" class="skill-map-chosen">
+        <div class="skill-map-chosen-title">HABILIDADES ESCOLHIDAS NESTA RUN</div>
+        <div class="skill-map-chosen-list">
+          <div
+            v-for="skill in chosenSkills"
+            :key="skill.id"
+            class="skill-map-chip"
+            :style="{ borderColor: skill.color, color: skill.color }"
+          >
+            {{ skill.name }}
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -65,8 +79,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useGameStore } from '@/stores/useGameStore'
-import { AFFINITY, ARCHETYPES, type ArchetypeId, type DamageType, type WeaponRange } from '@/game/skillTree'
+import { AFFINITY, ARCHETYPES, CAPSTONES, SKILL_NODES, capstoneNameFor, type ArchetypeId, type DamageType, type WeaponRange } from '@/game/skillTree'
 import { GODS } from '@/game/gods'
+
+const RARITY_COLOR: Record<string, string> = { comum: '#c9a227', raro: '#7a8fa3', epico: '#8f7aa8' }
 
 withDefaults(defineProps<{ closable?: boolean }>(), { closable: true })
 const emit = defineEmits(['close'])
@@ -87,6 +103,22 @@ const branchClass = (active: boolean): Record<string, boolean> => ({ 'skill-map-
 const archetypesFor = (range: WeaponRange, damage: DamageType) => ARCHETYPES.filter((a) => a.range === range && a.damage === damage)
 
 const affinityGodFor = (id: ArchetypeId) => GODS.find((god) => AFFINITY[god.id] === id)
+
+const chosenSkills = computed(() =>
+  gameStore.chosenSkillIds
+    .map((id) => {
+      if (id.startsWith('capstone:')) {
+        const archId = id.slice('capstone:'.length) as ArchetypeId
+        const capstone = CAPSTONES[archId]
+        if (!capstone) return null
+        return { id, name: capstoneNameFor(archId, gameStore.chosenGodId), color: '#c9a227' }
+      }
+      const node = SKILL_NODES.find((n) => n.id === id)
+      if (!node) return null
+      return { id, name: node.name, color: RARITY_COLOR[node.rarity] ?? '#c9a227' }
+    })
+    .filter((entry): entry is { id: string; name: string; color: string } => entry !== null),
+)
 </script>
 
 <style scoped>
@@ -278,5 +310,39 @@ const affinityGodFor = (id: ArchetypeId) => GODS.find((god) => AFFINITY[god.id] 
   align-items: center;
   gap: 10px;
   margin-top: 12px;
+}
+
+.skill-map-chosen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+  border-top: 1px solid var(--border-hair);
+  padding-top: 24px;
+}
+
+.skill-map-chosen-title {
+  font-family: 'Cinzel', serif;
+  font-size: 12px;
+  letter-spacing: 3px;
+  color: var(--ink-muted);
+}
+
+.skill-map-chosen-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  max-width: 90%;
+}
+
+.skill-map-chip {
+  background: var(--panel-solid);
+  border: 1px solid;
+  border-radius: 20px;
+  padding: 5px 14px;
+  font-size: 12px;
+  font-weight: 600;
 }
 </style>

@@ -162,6 +162,15 @@ export function comboDamageBonusPercent(state: PlayerEffectsState): number {
   return 0
 }
 
+export function resetCombo(state: PlayerEffectsState): void {
+  for (const node of state.nodes) {
+    if (node.effect.kind === 'combo-escalation' && node.effect.resetOnMiss) {
+      state.comboStacks = 0
+      return
+    }
+  }
+}
+
 export function registerKill(state: PlayerEffectsState): void {
   for (const node of state.nodes) {
     if (node.effect.kind === 'on-kill-buff') {

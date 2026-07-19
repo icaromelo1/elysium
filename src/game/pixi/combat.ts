@@ -111,6 +111,7 @@ export class CombatTicker {
     ctx: CombatContext,
     onHit: (target: Enemy, damage: number, isPrimary: boolean) => void,
     pierceExtraTargets = 0,
+    onMiss?: () => void,
   ): void {
     this.accumulatorMs += deltaMs
     while (this.accumulatorMs >= ctx.fireIntervalMs) {
@@ -121,6 +122,8 @@ export class CombatTicker {
         for (const extra of resolveExtraTargets(ctx, target, pierceExtraTargets)) {
           onHit(extra, ctx.damagePerTick, false)
         }
+      } else {
+        onMiss?.()
       }
     }
   }

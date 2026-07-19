@@ -7,6 +7,7 @@ export interface BuildState {
   role: Role | null
   archetypeId: ArchetypeId | null
   affinityArchetypeId: ArchetypeId | null
+  chosenIds: string[]
 }
 
 const RARITY_WEIGHT: Record<SkillNode['rarity'], number> = { comum: 10, raro: 4, epico: 1 }
@@ -31,6 +32,7 @@ function poolForLevel(levelDef: LevelDef, build: BuildState): SkillNode[] {
     if (node.axes.range && build.weaponRange && node.axes.range !== build.weaponRange) return false
     if (node.axes.damage && build.damageType && node.axes.damage !== build.damageType) return false
     if (node.archetypeId !== 'any' && node.archetypeId !== build.archetypeId) return false
+    if (build.chosenIds.includes(node.id)) return false
     return true
   })
 }
