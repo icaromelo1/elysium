@@ -17,6 +17,7 @@
 
     <div class="main-menu__actions">
       <div class="main-menu__btn main-menu__btn--primary k-btn-primary" @click="onPlay">JOGAR</div>
+      <div class="main-menu__btn main-menu__btn--ghost k-btn-ghost" @click="onSkillTree">ÁRVORE DE HABILIDADES</div>
       <div class="main-menu__btn main-menu__btn--ghost k-btn-ghost" @click="onSettings">CONFIGURAÇÕES</div>
     </div>
 
@@ -44,6 +45,10 @@ const glyphs = [
 const onPlay = (): void => {
   gameStore.startRun()
   router.push('/play')
+}
+
+const onSkillTree = (): void => {
+  router.push('/skills')
 }
 
 const onSettings = (): void => {

@@ -7,6 +7,7 @@
     <ClassSelect v-if="gameStore.runState === 'classselect'" @close="onClassClosed" />
     <ZoneSelect v-if="gameStore.runState === 'zoneselect'" @close="onZoneClosed" />
     <GameOverPanel v-if="gameStore.runState === 'gameover'" />
+    <SkillTreeMap v-if="showSkillMap" @close="showSkillMap = false" />
   </div>
 </template>
 
@@ -26,6 +27,7 @@ import SkillCard from '@/components/SkillCard.vue'
 import ClassSelect from '@/components/ClassSelect.vue'
 import ZoneSelect from '@/components/ZoneSelect.vue'
 import GameOverPanel from '@/components/GameOverPanel.vue'
+import SkillTreeMap from '@/components/SkillTreeMap.vue'
 
 const MOVE_SPEED = 220
 const SPRINT_MULTIPLIER = 2
@@ -40,6 +42,7 @@ const ENEMY_HIT_RANGE = 40
 
 const gameStore = useGameStore()
 const hostEl = ref<HTMLElement | null>(null)
+const showSkillMap = ref(false)
 
 let scene: MapScene | null = null
 let player: PlayerAvatar | null = null
@@ -70,6 +73,10 @@ function onKeyDown(event: KeyboardEvent): void {
     if (scene) {
       scene.setFreeMode(!scene.isFreeMode())
     }
+    return
+  }
+  if (key === 'm') {
+    showSkillMap.value = !showSkillMap.value
     return
   }
   pressedKeys.add(key)
