@@ -6,15 +6,44 @@
     <SkillCard v-if="gameStore.runState === 'levelup'" @close="onSkillClosed" />
     <ClassSelect v-if="gameStore.runState === 'classselect'" @close="onClassClosed" />
     <ZoneSelect v-if="gameStore.runState === 'zoneselect'" @close="onZoneClosed" />
+    <ForkSelect
+      v-if="gameStore.runState === 'fork-range'"
+      eyebrow="NÍVEL 6 · UM CAMINHO SE ABRE"
+      title="Melee ou Projétil?"
+      :options="RANGE_OPTIONS"
+      @choose="(value) => onForkChosen('range', value)"
+    />
+    <ForkSelect
+      v-if="gameStore.runState === 'fork-damage'"
+      eyebrow="NÍVEL 10 · UM CAMINHO SE ABRE"
+      title="Físico ou Mágico?"
+      :options="DAMAGE_OPTIONS"
+      @choose="(value) => onForkChosen('damage', value)"
+    />
+    <ForkSelect
+      v-if="gameStore.runState === 'fork-role'"
+      eyebrow="NÍVEL 15 · UM CAMINHO SE ABRE"
+      title="Qual seu papel em combate?"
+      :options="ROLE_OPTIONS"
+      @choose="(value) => onForkChosen('role', value)"
+    />
+    <ForkSelect
+      v-if="gameStore.runState === 'capstone'"
+      eyebrow="NÍVEL 20 · CAPSTONE"
+      title="Sua habilidade definidora"
+      :options="capstoneOptions"
+      @choose="onCapstoneChosen"
+    />
     <GameOverPanel v-if="gameStore.runState === 'gameover'" />
     <SkillTreeMap v-if="showSkillMap" @close="showSkillMap = false" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import type { Ticker } from 'pixi.js'
 import { useGameStore } from '@/stores/useGameStore'
+import type { ForkAxis } from '@/stores/useGameStore'
 import { MapScene } from '@/game/pixi/scene'
 import { PlayerAvatar, type MovementConstraint } from '@/game/pixi/player'
 import { EnemyPool, type Enemy } from '@/game/pixi/enemy'
@@ -22,7 +51,8 @@ import { CombatTicker, type CombatContext } from '@/game/pixi/combat'
 import { CombatFxLayer } from '@/game/pixi/combatFx'
 import { WaveSpawner } from '@/game/pixi/waveSpawner'
 import { PLAYER_START, WORLD_H, WORLD_W } from '@/game/mapDef'
-import { CAPSTONES, SKILL_NODES } from '@/game/skillTree'
+import { CAPSTONES, SKILL_NODES, capstoneNameFor, type DamageType, type Role, type WeaponRange } from '@/game/skillTree'
+import ForkSelect, { type ForkOption } from '@/components/ForkSelect.vue'
 import {
   activateUltimateIfReady,
   auraShieldPercent,
@@ -62,9 +92,35 @@ const BASE_MAX_HP = 100
 const SUMMON_TARGET_RANGE = 400
 const ULTIMATE_AOE_RADIUS = 150
 
+const RANGE_OPTIONS: ForkOption[] = [
+  { value: 'melee', label: 'Melee', description: 'Combate corpo a corpo, alcance curto.' },
+  { value: 'projetil', label: 'Projétil', description: 'Combate à distância, 3 modos de mira.' },
+]
+const DAMAGE_OPTIONS: ForkOption[] = [
+  { value: 'fisico', label: 'Físico', description: 'Dano bruto, sangramento, quebra de armadura.' },
+  { value: 'magico', label: 'Mágico', description: 'Dano arcano, queimaduras, efeitos elementais.' },
+]
+const ROLE_OPTIONS: ForkOption[] = [
+  { value: 'ofensivo', label: 'Ofensivo', description: 'Foco total em causar dano.' },
+  { value: 'defensivo', label: 'Defensivo', description: 'Foco em sobreviver e absorver dano.' },
+  { value: 'suporte', label: 'Suporte', description: 'Foco em cura, invocações e buffs.' },
+]
+
 const gameStore = useGameStore()
 const hostEl = ref<HTMLElement | null>(null)
 const showSkillMap = ref(false)
+
+const capstoneOptions = computed<ForkOption[]>(() => {
+  if (!gameStore.archetypeId) return []
+  const capstone = CAPSTONES[gameStore.archetypeId]
+  return [
+    {
+      value: gameStore.archetypeId,
+      label: capstoneNameFor(gameStore.archetypeId, gameStore.chosenGodId),
+      description: capstone.effect.kind === 'ultimate-window' ? `Por ${capstone.effect.durationMs / 1000}s, seu ataque ganha poder supremo.` : '',
+    },
+  ]
+})
 
 let scene: MapScene | null = null
 let player: PlayerAvatar | null = null
@@ -370,13 +426,19 @@ function onTick(deltaMs: number): void {
   combatFx.update(deltaMs)
 }
 
-function onSkillClosed(): void {
-  gameStore.acknowledgeSkill()
-}
+function onSkillClosed(): void {}
 
 function onClassClosed(): void {}
 
 function onZoneClosed(): void {}
+
+function onForkChosen(axis: ForkAxis, value: string): void {
+  gameStore.chooseFork(axis, value as WeaponRange | DamageType | Role)
+}
+
+function onCapstoneChosen(): void {
+  gameStore.chooseCapstone()
+}
 
 watch(
   () => gameStore.runState,

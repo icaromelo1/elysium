@@ -8,71 +8,99 @@
       </div>
       <div class="skill-card-list">
         <div
-          v-for="card in skills"
-          :key="card.name"
+          v-for="card in cards"
+          :key="card.node.id"
           class="skill-card"
           :style="{ borderColor: card.border }"
-          @click="confirm"
+          @click="confirm(card.node.id)"
         >
-          <div
-            class="skill-card-icon"
-            :style="{ background: card.iconBg, borderColor: card.accent }"
-          >
-            <div class="skill-card-icon-shape" :style="[card.iconShape, { background: card.accent }]" />
+          <div class="skill-card-icon" :style="{ background: card.iconBg, borderColor: card.accent }">
+            <div class="skill-card-icon-shape" :style="{ background: card.accent }" />
           </div>
-          <div class="skill-card-rarity" :style="{ color: card.accent }">{{ card.rarity }}</div>
-          <div class="skill-card-name">{{ card.name }}</div>
-          <div class="skill-card-description">{{ card.description }}</div>
-          <div class="skill-card-effect" :style="{ color: card.accent }">{{ card.effect }}</div>
+          <div class="skill-card-rarity" :style="{ color: card.accent }">{{ card.node.rarity.toUpperCase() }}</div>
+          <div class="skill-card-name">{{ card.node.name }}</div>
+          <div class="skill-card-description">{{ card.node.description }}</div>
+          <div class="skill-card-effect" :style="{ color: card.accent }">{{ card.effectLabel }}</div>
           <div class="skill-card-choose" :style="{ background: card.accent }">ESCOLHER</div>
         </div>
       </div>
-      <div class="skill-card-hint">
-        use <span class="skill-card-key">↵</span> ou clique para confirmar
-      </div>
+      <div class="skill-card-hint">use o mouse pra escolher</div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted } from 'vue'
+import { computed } from 'vue'
 import { useGameStore } from '@/stores/useGameStore'
+import type { SkillNode } from '@/game/skillTree'
+import type { EffectSpec } from '@/game/effects'
 
 const emit = defineEmits(['close'])
 
 const gameStore = useGameStore()
 
-const skills = [
-  {
-    name: 'Fúria de Ares',
-    description: 'Aumenta o dano do ataque básico.',
-    effect: '+18% dano',
-    iconShape: { clipPath: 'polygon(50% 0, 100% 100%, 0 100%)' },
-    rarity: 'COMUM',
-    accent: '#c9a227',
-    iconBg: 'rgba(201,162,39,0.12)',
-    border: 'rgba(201,162,39,0.35)',
-  },
-]
-
-const confirm = (): void => {
-  gameStore.acknowledgeSkill()
-  emit('close')
+const RARITY_COLOR: Record<SkillNode['rarity'], { accent: string; iconBg: string; border: string }> = {
+  comum: { accent: '#c9a227', iconBg: 'rgba(201,162,39,0.12)', border: 'rgba(201,162,39,0.35)' },
+  raro: { accent: '#7a8fa3', iconBg: 'rgba(122,143,163,0.12)', border: 'rgba(122,143,163,0.35)' },
+  epico: { accent: '#8f7aa8', iconBg: 'rgba(143,122,168,0.12)', border: 'rgba(143,122,168,0.35)' },
 }
 
-const handleKeydown = (event: KeyboardEvent): void => {
-  if (event.key === 'Enter') {
-    confirm()
+const STAT_LABEL: Record<string, string> = {
+  damage: 'dano',
+  maxHp: 'vida máxima',
+  moveSpeed: 'velocidade',
+  attackSpeed: 'velocidade de ataque',
+  range: 'alcance',
+}
+
+function formatEffect(effect: EffectSpec): string {
+  switch (effect.kind) {
+    case 'stat-mod':
+      return `+${effect.percent}% ${STAT_LABEL[effect.stat] ?? effect.stat}`
+    case 'on-hit-dot':
+      return `${effect.damagePercent}% dano ao longo do tempo`
+    case 'on-hit-stun':
+      return `${effect.chancePercent}% chance de atordoar`
+    case 'on-hit-lifesteal':
+      return `${effect.percent}% de roubo de vida`
+    case 'on-hit-multistrike':
+      return `${effect.chancePercent}% chance de acerto duplo`
+    case 'on-hit-shred':
+      return `alvo recebe +${effect.percent}% dano`
+    case 'pierce':
+      return `atravessa +${effect.extraTargets} alvo(s)`
+    case 'combo-escalation':
+      return `+${effect.percentPerStack}%/combo (máx ${effect.maxStacks})`
+    case 'combo-burst':
+      return `explode a cada ${effect.stacksRequired} acertos`
+    case 'on-kill-buff':
+      return `+${effect.percent}% ${STAT_LABEL[effect.stat] ?? effect.stat} ao matar`
+    case 'dash':
+      return `avança até o alvo (cd ${effect.cooldownMs / 1000}s)`
+    case 'aura-shield':
+      return `absorve ${effect.absorbPercent}% do dano`
+    case 'periodic-heal':
+      return `cura ${effect.percent}% a cada ${effect.intervalMs / 1000}s`
+    case 'summon-companion':
+      return `invoca aliado por ${effect.durationMs / 1000}s`
+    case 'ultimate-window':
+      return `ativa por ${effect.durationMs / 1000}s`
+    default:
+      return ''
   }
 }
 
-onMounted(() => {
-  window.addEventListener('keydown', handleKeydown)
-})
+const cards = computed(() =>
+  gameStore.pendingCards.map((node) => {
+    const colors = RARITY_COLOR[node.rarity]
+    return { node, effectLabel: formatEffect(node.effect), ...colors }
+  }),
+)
 
-onUnmounted(() => {
-  window.removeEventListener('keydown', handleKeydown)
-})
+const confirm = (nodeId: string): void => {
+  gameStore.chooseSkillCard(nodeId)
+  emit('close')
+}
 </script>
 
 <style scoped>
@@ -163,6 +191,7 @@ onUnmounted(() => {
 .skill-card-icon-shape {
   width: 34px;
   height: 34px;
+  border-radius: 50%;
 }
 
 .skill-card-rarity {
@@ -208,21 +237,6 @@ onUnmounted(() => {
 .skill-card-hint {
   font-size: 13px;
   color: var(--ink-faint);
-}
-
-.skill-card-key {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  margin: 0 3px;
-  border-radius: 5px;
-  background: var(--panel-solid);
-  border: 1px solid var(--border-faint);
-  font-weight: 700;
-  color: var(--ink);
-  font-size: 11px;
 }
 
 @keyframes floatUp {
