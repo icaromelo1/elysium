@@ -17,7 +17,7 @@ O pedido cresceu durante o brainstorm de "trocar paleta" pra um sistema de ilumi
 Troca os blobs de terreno por uma grade de tiles de verdade.
 
 - **Tile size:** 64px. O mundo (1920×1080) é coberto por uma grade de tiles com uma margem extra além da borda visível (evita qualquer aresta cortada, já que 1080 não é múltiplo exato de 64) — `WORLD_W`/`WORLD_H` continuam os mesmos, usados só pra câmera/zona, sem relação obrigatória com a grade.
-- **Novo `src/game/tilemap.ts`** — `TileType` ('grama' | 'caminho' | 'agua'), uma matriz 2D (`TileGrid`) descrevendo o tile de cada célula, e funções de conversão mundo↔célula.
+- **Novo `src/game/tilemap.ts`** — `TileType` ('grama' | 'agua'), uma matriz 2D (`TileGrid`) descrevendo o tile de cada célula, e funções de conversão mundo↔célula.
 - **Renderização:** um `Sprite` do PixiJS por tile visível (na escala do mapa, ~500 tiles — tranquilo pro PixiJS, não precisa de tilemap batching especial). Texturas carregadas via `Assets.load()` do PixiJS a partir de `src/assets/tiles/*.png` (arquivos gerados externamente).
 - **Paleta base — Mediterrâneo Vívido** (a que você escolheu): oliveira `#6f9a52`, terra `#d8b177`, egeu `#3b6e8f`, terracota `#c1592f`, mármore `#f2e8d5`, ouro `#b5872a`. **Importante:** os tiles devem ser gerados em iluminação neutra/meio-dia, sem mood pré-cozido de horário — quem aplica o tom de amanhecer/noite/etc. é o sistema de iluminação da Fase 3/4, por cima.
 - **Props decorativos** (coluna dórica, coluna quebrada, estátua, oliveira, cipreste, ânfora) — sprites individuais gerados no mesmo pipeline, posicionados sobre a grade em pontos fixos, sem colisão (só cenário).
